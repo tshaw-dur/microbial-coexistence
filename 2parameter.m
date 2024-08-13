@@ -11,31 +11,32 @@ J = jacobian(F,vars);
 %M1
 function F = m1solve(x,A11,I,D,P1)
     M = x(1);
-    F(1) = D+P1*(sech(M-5)-0.2)/A11 - I/M;
+    F(1) = M*(D+((sech(M-5)-0.2)*P1/A11)) - I;
 end
 
 %M2
 function G = m2solve(x,A22,I,D,P2)
     M = x(1);
-    G(1) = D+P2*(sech(M-6.5)-0.2)/A22 - I/M;
+    G(1) = M*(D+((sech(M-6.5)-0.2)*P2/A22)) - I;
 end
 
 %Coexistence
 function H = m3solve(x,A11,A12,A21,A22,I,D,P1,P2)
     M = x(1);
-    H(1) = D+(sech(M-5)-0.2)*(P1*A22-P2*A21)+(sech(M-6.5)-0.2)*(P2*A11-P1*A12) - I/M;
+    det = A11*A22 - A12*A21;
+    H(1) = M*(D*det + (sech(M-5)-0.2)*(A22*P1-A21*P2) + (sech(M-6.5)-0.2)*(A11*P2-A12*P1)) - I*det;
 end
 
 % CHOOSE YOUR PARAMETERS %
 % HIDE THE TWO YOU WANT TO PLOT %
-A11 = 5;
+A11 = 2;
 A12 = 0;
 A21 = 0;
-A22 =  1;
+A22 = 1.4;
 %I = 21.6;
 %D = 2.5;
 P1 = 10;
-P2 = 0.5;
+P2 = 2;
 
 % CHOOSE THE LENGTH AND WIDTH OF THE PLOTS %
 % CHOOSE THE PARAMETERS YOU WANT TO PLOT%
@@ -43,7 +44,7 @@ ymin = 1;
 ymax = 5;
 xmin = 1;
 xmax = 40;
-num_points = 200;
+num_points = 100;
 
 colours = zeros(1,num_points);
 
@@ -51,104 +52,219 @@ for D = linspace(ymin,ymax,num_points) %y-axis
     Icolours = [];
     for I = linspace(xmin,xmax,num_points) %x-axis
         
-        equilibria = [0,0,0]; %Create a list for equilibria%
+        colour=[0,0,0,0]; %[co,m2,m1,ext]
         
         
-        %Extinction%
-        ext = [0,0,I/D];
-        J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {ext(1), ext(2), ext(3), A11,A12,A21,A22,I,D,P1,P2});
-        J_num=double(J_num); %Jacobian$
+        %EXTINCTION%
+        J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {0, 0, I/D, A11,A12,A21,A22,I,D,P1,P2});
+        J_num = double(J_num); %Jacobian$
         eigenvalues = real(eig(J_num)); %Real parts of the eigenvalues
         %disp(eigenvalues);
         if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check they are all negative
-            equilibria = [equilibria; ext]; %If so, add to the equilibria list
+            colour(4) = colour(4) + 1;
         end
 
-        %M1 survival
-        M1range = linspace(2,8,5);
-        for a = 1:length(M1range)
-            x0 = M1range(a);
-            solved = fsolve(@(x) m1solve(x,A11,I,D,P1), x0); %Solve for M1
-            %disp(solved)
-            equil = [(sech(solved-5)-0.2)/A11,0,solved]; %Equilibrium point
-            %disp(equil)
-            equil = round(equil, 3); %Avoids rounding errors%
-                    if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 && ismember(equil, equilibria, 'rows')==0 
-                        %If equilibrium unfeasible or already in list, ignore it$
-                        J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
-                        J_num=double(J_num); %Jacobian$
-                        eigenvalues = real(eig(J_num)); %Eigenvalues
-                        %disp(eigenvalues)
-                        if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check they are all negative
-                            equilibria = [equilibria; equil];
-                        end
-                    end
+
+
+
+        %M1 SURVIVAL
+        solved1 = fsolve(@(x) m1solve(x,A11,I,D,P1), 4);
+        equil = [(sech(solved1-5)-0.2)/A11,0,solved1]; %Equilibrium point
+        check = m1solve(solved1,A11,I,D,P1); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(3) = colour(3) + 1;
+                end
+            end
         end
 
-        %M2 survival
-        M2range = linspace(4,10,5);
-        for a = 1:length(M2range)
-            x0 = M2range(a);
-            solved = fsolve(@(x) m2solve(x,A22,I,D,P2), x0); %Solve for M2
-            %disp(solved)
-            equil = [0,(sech(solved-6.5)-0.2)/A22,solved]; %Equilibrium point
-            %disp(equil)
-            equil = round(equil, 3); %Avoids rounding errors%
-                    if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 && ismember(equil, equilibria, 'rows')==0 
-                        %If equilibrium unfeasible or already in list, ignore it$
-                        J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
-                        J_num=double(J_num); %Jacobian$
-                        eigenvalues = real(eig(J_num)); %Eigenvalues
-                        %disp(eigenvalues)
-                        if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check they are all negative
-                            equilibria = [equilibria; equil];
-                        end
-                    end
+        solved2 = fsolve(@(x) m1solve(x,A11,I,D,P1)/(x-solved1)^2, 4);
+        equil = [(sech(solved2-5)-0.2)/A11,0,solved2]; %Equilibrium point
+        check = m1solve(solved2,A11,I,D,P1); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(3) = colour(3) + 1;
+                end
+            end
         end
 
-        %Coexistence
-        M3range = linspace(0.1,10,10);
-        for a = 1:length(M3range)
-            x0 = M3range(a);
-            solved = fsolve(@(x) m3solve(x,A11,A12,A21,A22,I,D,P1,P2), x0); %Solve for M3
-            %disp(solved)
-            equil = [(A22*(sech(solved-5)-0.2)-A12*(sech(solved-6.5)-0.2))/(A11*A22-A12*A21),(A11*(sech(solved-6.5)-0.2)-A21*(sech(solved-5)-0.2))/(A11*A22-A12*A21),solved];
-            %disp(equil)
-            equil = round(equil, 3); %Avoids rounding errors%
-                    if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 && ismember(equil, equilibria, 'rows')==0 
-                        %If equilibrium unfeasible or already in list, ignore it$
-                        J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
-                        J_num=double(J_num); %Jacobian$
-                        eigenvalues = real(eig(J_num)); %Eigenvalues
-                        %disp(eigenvalues)
-                        if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check they are all negative
-                            equilibria = [equilibria; equil];
-                        end
-                    end
+        solved3 = fsolve(@(x) m1solve(x,A11,I,D,P1)/(((x-solved1)^2)*((x-solved2)^2)) , 4);
+        equil = [(sech(solved3-5)-0.2)/A11,0,solved3]; %Equilibrium point
+        check = m1solve(solved3,A11,I,D,P1); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(3) = colour(3) + 1;
+                end
+            end
         end
 
+
+
+
+        %M2 SURVIVAL
+        solved1 = fsolve(@(x) m2solve(x,A22,I,D,P2), 6);
+        equil = [0,(sech(solved1-6.5)-0.2)/A22,solved1]; %Equilibrium point
+        check = m2solve(solved1,A22,I,D,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(2) = colour(2) + 1;
+                end
+            end
+        end
+
+        solved2 = fsolve(@(x) m2solve(x,A22,I,D,P2)/(x-solved1)^2, 7);
+        equil = [0,(sech(solved2-6.5)-0.2)/A22,solved2]; %Equilibrium point
+        check = m2solve(solved2,A22,I,D,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(2) = colour(2) + 1;
+                end
+            end
+        end
+
+        solved3 = fsolve(@(x) m2solve(x,A22,I,D,P2)/(((x-solved1)^2)*((x-solved2)^2)), 9);
+        equil = [0,(sech(solved3-6.5)-0.2)/A22,solved3]; %Equilibrium point
+        check = m2solve(solved3,A22,I,D,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(2) = colour(2) + 1;
+                end
+            end
+        end
+
+
+
+
+        %COEXISTENCE
+        solved1 = fsolve(@(x) m3solve(x,A11,A12,A21,A22,I,D,P1,P2), 2);
+        equil = [((A22*(sech(solved1-5)-0.2))-(A12*(sech(solved1-6.5)-0.2)))/(A11*A22-A12*A21),...
+        ((A11*(sech(solved1-6.5)-0.2))-(A21*(sech(solved1-5)-0.2)))/(A11*A22-A12*A21),...
+        solved1]; %Equilibrium point
+        check = m3solve(solved1,A11,A12,A21,A22,I,D,P1,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(1) = colour(1) + 1;
+                end
+            end
+        end
+
+        solved2 = fsolve(@(x) m3solve(x,A11,A12,A21,A22,I,D,P1,P2)/(x-solved1)^2, 4.5);
+        equil = [((A22*(sech(solved2-5)-0.2))-(A12*(sech(solved2-6.5)-0.2)))/(A11*A22-A12*A21),...
+        ((A11*(sech(solved2-6.5)-0.2))-(A21*(sech(solved2-5)-0.2)))/(A11*A22-A12*A21),...
+        solved2]; %Equilibrium point
+        check = m3solve(solved2,A11,A12,A21,A22,I,D,P1,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(1) = colour(1) + 1;
+                end
+            end
+        end
+
+        solved3 = fsolve(@(x) m3solve(x,A11,A12,A21,A22,I,D,P1,P2)/(((x-solved1)^2)*((x-solved2)^2)), 7);
+        equil = [((A22*(sech(solved3-5)-0.2))-(A12*(sech(solved3-6.5)-0.2)))/(A11*A22-A12*A21),...
+        ((A11*(sech(solved3-6.5)-0.2))-(A21*(sech(solved3-5)-0.2)))/(A11*A22-A12*A21),...
+        solved3]; %Equilibrium point
+        check = m3solve(solved3,A11,A12,A21,A22,I,D,P1,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(1) = colour(1) + 1;
+                end
+            end
+        end
         
-        equilibria(1,:) = []; %Gets rid of initial [0,0,0]
-        %disp(equilibria) %Shows the feasible, stable equilibria for this set of parameters%
-
-        %Each digit represents the number of stable equilibria of that type
-        colour = [0,0,0,0]; %[co,m2,m1,ext]
-        for k = 1:length(equilibria(:,1))
-            if equilibria(k,1) == 0 && equilibria(k,2)==0 %extinction
-                colour(4) = colour(4) + 1;
-            end
-            if equilibria(k,1) > 0 && equilibria(k,2)==0 %m1 survival
-                colour(3) = colour(3) + 1;
-            end
-            if equilibria(k,1) ==0 && equilibria(k,2) > 0 %m2 survival
-                colour(2) = colour(2) + 1;
-            end
-            if equilibria(k,1) > 0 && equilibria(k,2) > 0 %coexistence
-                colour(1) = colour(1) + 1;
+        solved4 = fsolve(@(x) m3solve(x,A11,A12,A21,A22,I,D,P1,P2)/(((x-solved1)^2)*((x-solved2)^2)*((x-solved3)^2)), 9.5);
+        equil = [((A22*(sech(solved4-5)-0.2))-(A12*(sech(solved4-6.5)-0.2)))/(A11*A22-A12*A21),...
+        ((A11*(sech(solved4-6.5)-0.2))-(A21*(sech(solved4-5)-0.2)))/(A11*A22-A12*A21),...
+        solved4]; %Equilibrium point
+        check = m3solve(solved4,A11,A12,A21,A22,I,D,P1,P2); %Make sure it actually is
+        %disp(equil)
+        %disp(check)
+        if -1e-4 < check && check < 1e-4
+            equil = round(equil, 3);
+            if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 %Check feasibility
+                J_num = subs(J, {C1,C2,M,a11,a12,a21,a22,i,d,p1,p2}, {equil(1), equil(2), equil(3), A11,A12,A21,A22,I,D,P1,P2});
+                J_num = double(J_num); %Jacobian
+                eigenvalues = real(eig(J_num)); %Eigenvalues
+                %disp(eigenvalues)
+                if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 %Check real parts are negative
+                    colour(1) = colour(1) + 1;
+                end
             end
         end
-        %disp(colour)
-        
+
+        disp(colour)
+
+
+
         if colour == [0,0,0,0] %black
             finalcolour = 0;
         end
@@ -194,21 +310,21 @@ end
 
 colours(1,:) = [];
 disp(colours)
-%disp(length(colours))
+
 
 customColorMap = [
-    0, 0, 0;        %0 = black
+    0, 0, 0        %0 = black
     1, 0, 0;        %1 = red
     0.6, 1, 0;      %2 = light green
     0.12, 0.58, 0;  %3 = dark green
     0, 0, 1;        %4 = blue
     0.97, 1, 0.55;  %5 = light yellow
     0.84, 0.90, 0;  %6 = dark yellow
-    0.60, 0, 1;     %7 = purple 
-    0, 1, 0;        %8 = green
-    0.12, 0.89, 0;  %9 = slightly light green
-    0.15, 0.72, 0   %10 = slightly dark green
-    %0.93, 1, 0      %11 = yellow
+    0.60, 0, 1     %7 = purple 
+    %0, 1, 0;        %8 = green
+    %0.12, 0.89, 0;  %9 = slightly light green
+    %0.15, 0.72, 0;   %10 = slightly dark green
+    %0.93, 1, 0;      %11 = yellow
     ];
 
 %disp(length(customColorMap))
@@ -220,7 +336,7 @@ Ispace = linspace(xmin,xmax,num_points);
 %disp(Ispace)
 
 colormap(customColorMap)
-set(gca, 'CLim', [0 8]);
+set(gca, 'CLim', [1 7]);
 imagesc(Ispace,Dspace,colours)
 axis xy
 colorbar;
