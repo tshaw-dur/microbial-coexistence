@@ -46,9 +46,9 @@ A22 = 2;
 % CHOOSE THE LENGTH AND WIDTH OF THE PLOTS %
 % CHOOSE THE PARAMETERS YOU WANT TO PLOT%
 ymin = 0.01;
-ymax = 10;
+ymax = 20;
 xmin = 0.01;
-xmax = 10;
+xmax = 2;
 num_points = 100;
 
 colours = zeros(1,num_points);
@@ -61,7 +61,7 @@ for I = linspace(ymin,ymax,num_points) %y-axis
         
         
         %EXTINCTION%
-        J_num = subs(J, {C1,C2,M,k1,k2,h1,h2,a11,a12,a21,a22,i,p}, {0, 0, I/D, K1,K2,H1,H2,A11,A12,A21,A22,I,P});
+        J_num = subs(J, {C1,C2,M,k1,k2,h1,h2,a11,a12,a21,a22,i,p}, {0, 0, I, K1,K2,H1,H2,A11,A12,A21,A22,I,P});
         J_num = double(J_num); %Jacobian$
         eigenvalues = real(eig(J_num)); %Real parts of the eigenvalues
         %disp(eigenvalues);
@@ -109,7 +109,7 @@ for I = linspace(ymin,ymax,num_points) %y-axis
             end
         end
 
-        solved3 = fsolve(@(x) m1solve(x,K1,H1,A11,I,P)/(((x-solved1)^2)*((x-solved2)^2)) , 4);
+        solved3 = fsolve(@(x) m1solve(x,K1,H1,A11,I,P)/(((x-solved1)^2)*((x-solved2)^2)) , 4.01);
         equil = [(sech(solved3-K1)-H1)/A11,0,solved3]; %Equilibrium point
         check = m1solve(solved3,K1,H1,A11,I,P); %Make sure it actually is
         %disp(equil)
