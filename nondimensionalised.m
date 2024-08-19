@@ -15,13 +15,14 @@ tic
 % 5 - Choose the number of points to plot
 % 6 - Place the 2 parameters you want to plot into the for loops
 % 
-% These instructions are noted with numbers throughout the code
+% These instructions are noted with numbers throughout the code by
+% capital letters
 
 
 
 % 1a - ALTER YOUR EQUATION FOR r1(M)
 function r1result = r1(M)
-    r1result = sech(M-4) - 0.2;
+    r1result = sech(M-5) - 0.2;
 end
 
 
@@ -33,7 +34,7 @@ end
 
 % 2a - ALTER YOUR EQUATION FOR r1'(M)
 function r1dashresult = r1dash(M)
-    r1dashresult = -tanh(M-4)*sech(M-4);
+    r1dashresult = -tanh(M-5)*sech(M-5);
 end
 
 
@@ -72,21 +73,21 @@ tolerance = 1e-5;
 
 % 3a - CHOOSE YOUR PARAMETERS
 % 3b - HIDE THE TWO YOU WANT TO PLOT
-A11 = 1;
+A11 = 0.5;
 A12 = 0;
 A21 = 0;
-A22 = 5.2;
-%I = 21.6;
-%P = 10;
+A22 = 5;
+%I = 8.5;
+%P = 3;
 
 
 
 % 4 - CHOOSE THE LENGTH AND WIDTH OF THE PLOTS
-ymin = 0.1;         % This is where you want the y-axis to begin
-ymax = 15;          % and end
+ymin = 0.01;         % This is where you want the y-axis to begin
+ymax = 12;          % and end
 xmin = 0.01;        % The same for the x-axis
-xmax = 4;
-
+xmax = 2.5;
+% NOTE - Do not set xmin or ymin to 0, just a small value instead!
 
 
 % 5 - CHOOSE THE NUMBER OF POINTS TO PLOT
