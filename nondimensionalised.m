@@ -19,6 +19,27 @@ tic
 % capital letters
 
 
+% A function for finding the roots of an equation, given a lower bound
+% and an upper bound in which to search
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    num_points = 1e6;    
+    x = linspace(lower_bound,upper_bound,1e6);
+    fvals = f(x);
+    I = find(fvals(2:end).*fvals(1:end-1)<=0);
+    solutions = [];
+    for i = I
+        [X,FVAL,EXITFLAG] = fzero(f,[x(i-1),x(i+1)]);
+        if EXITFLAG > 0
+            solutions = [solutions, X];
+        end
+        if EXITFLAG <= 0
+            disp('Warning: fsolve failed; printing EXITFLAG in next line')
+            disp(EXITFLAG)
+        end
+    end
+end
+
+
 
 % 1a - ALTER YOUR EQUATION FOR r1(M)
 function r1result = r1(M)
@@ -54,20 +75,20 @@ end
 
 % To solve M1 Survival
 function m1 = m1solve(M,A11,I,P)
-    m1 = M*(1+(r1(M)*P/A11)) - I;
+    m1 = M.*(1+(r1(M).*P/A11)) - I;
 end
 
 % To solve M2 Survival
 function m2 = m2solve(M,A22,I,P)
-    m2 = M*(1+(r2(M)*P/A22)) - I;
+    m2 = M.*(1+(r2(M).*P/A22)) - I;
 end
 
 % To solve M3 (Coexistence)
 function m3 = m3solve(M,A11,A12,A21,A22,I,P)
-    m3 = M*(1 + (r1(M)*(A22-A21) + r2(M)*(A11-A12))*P/(A11*A22 - A12*A21)) - I;
+    m3 = M.*(1 + (r1(M).*(A22-A21) + r2(M).*(A11-A12)).*P/(A11*A22 - A12*A21)) - I;
 end
 
-tolerance = 1e-5;
+tolerance = 1e-6;
 
 
 
@@ -86,7 +107,7 @@ A22 = 5;
 ymin = 0.01;         % This is where you want the y-axis to begin
 ymax = 12;          % and end
 xmin = 0.01;        % The same for the x-axis
-xmax = 2.5;
+xmax = 4;
 % NOTE - Do not set xmin or ymin to 0, just a small value instead!
 
 
@@ -96,10 +117,6 @@ num_points = 100;   % This is the number of points along each axis (i.e. an nxn 
 colours = zeros(num_points);
 % This is a matrix containing the 'colours' we want to plot for each point
 % This will be filled with various numbers by the end
-
-options = optimoptions('fsolve', 'TolX', 1e-10);
-% These are the tolerances we want for fsolve
-
 
 
 % The following loops find a 'number' for each point which
@@ -137,15 +154,11 @@ for I = linspace(ymin,ymax,num_points)
         %Next we do M1 survival equilibria
 
         G = @(M) m1solve(M,A11,I,P);
-        for i = linspace(4,6.2,3)
-            % We know that the maximum number of possible equilibria is 3
-            % So we test three different starting values of fsolve
-            solved = fsolve(G, i, options);
-            %disp(solved)
-            check = G(solved); % We check it is actually a root
+        for root = FindRoots(G,0,I)
+            check = G(root); % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
-                equil = [r1(solved)/A11,0,solved]; % Find the equilibrium's co-ordinate
+                equil = [r1(root)/A11,0,root]; % Find the equilibrium's co-ordinate
                 equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
                 if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 % If it is feasible
@@ -157,24 +170,17 @@ for I = linspace(ymin,ymax,num_points)
                     end
                 end
             end
-            G = @(M) G(M)/((M-solved)^2); 
-            % Once a root has been found, we alter the equation so that
-            % the root can no longer be found
         end
 
 
         % We then do the same for M2 survival
 
         G = @(M) m2solve(M,A22,I,P);
-        for i = linspace(6,8.2,3)
-            % We know that the maximum number of possible equilibria is 3
-            % So we test three different starting values of fsolve
-            solved = fsolve(G, i, options);
-            %disp(solved)
-            check = G(solved);  % We check it is actually a root
+        for root = FindRoots(G,0,I)
+            check = G(root);  % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
-                equil = [0,r2(solved)/A22,solved];  % Find the equilibrium's co-ordinate
+                equil = [0,r2(root)/A22,root];  % Find the equilibrium's co-ordinate
                 equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
                 if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 % If it is feasible
@@ -186,26 +192,19 @@ for I = linspace(ymin,ymax,num_points)
                     end
                 end
             end
-            G = @(M) G(M)/((M-solved)^2);
-            % Once a root has been found, we alter the equation so that
-            % the root can no longer be found
         end
 
 
         % We then do the same for Coexistence
 
         G = @(M) m3solve(M,A11,A12,A21,A22,I,P);
-        for i = linspace(4,8.2,4)
-            % This time, we know that the maximum number of possible equilibria is 4
-            % So we test 4 different starting values of fsolve
-            solved = fsolve(G, i);
-            %disp(solved)
-            check = G(solved); % We check it is actually a root
+        for root = FindRoots(G,0,20)
+            check = G(root);  % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
-                equil = [((A22*r1(solved))-(A12*r2(solved)))/(A11*A22-A12*A21),...
-                ((A11*r2(solved))-(A21*r1(solved)))/(A11*A22-A12*A21),...
-                solved]; % Find the equilibrium's co-ordinate
+                equil = [((A22*r1(root))-(A12*r2(root)))/(A11*A22-A12*A21),...
+                ((A11*r2(root))-(A21*r1(root)))/(A11*A22-A12*A21),...
+                root]; % Find the equilibrium's co-ordinate
                 equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
                 if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 % If it is feasible
@@ -217,13 +216,10 @@ for I = linspace(ymin,ymax,num_points)
                     end
                 end
             end
-            G = @(M) G(M)/((M-solved)^2);
-            % Once a root has been found, we alter the equation so that
-            % the root can no longer be found
         end
 
 
-        %disp(colour)
+        disp(colour)
 
 
         % The following color scheme is based on the idea that
