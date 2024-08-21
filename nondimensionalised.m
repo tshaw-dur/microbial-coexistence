@@ -94,20 +94,20 @@ tolerance = 1e-6;
 
 % 3a - CHOOSE YOUR PARAMETERS
 % 3b - HIDE THE TWO YOU WANT TO PLOT
-A11 = 0.5;
+%A11 = 0.5;
 A12 = 0;
 A21 = 0;
-A22 = 5;
-%I = 8.5;
-%P = 3;
+A22 = 4;
+%I = 8;
+P = 1;
 
 
 
 % 4 - CHOOSE THE LENGTH AND WIDTH OF THE PLOTS
 ymin = 0.01;         % This is where you want the y-axis to begin
-ymax = 12;          % and end
+ymax = 10;          % and end
 xmin = 0.01;        % The same for the x-axis
-xmax = 4;
+xmax = 25;
 % NOTE - Do not set xmin or ymin to 0, just a small value instead!
 
 
@@ -126,12 +126,12 @@ colours = zeros(num_points);
 
 ynum=0;
 % 6a - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
-for I = linspace(ymin,ymax,num_points)
+for A11 = linspace(ymin,ymax,num_points)
     ynum = ynum + 1;
     xnum = 0;
     % 6b - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
     % (Final instruction)
-    for P = linspace(xmin,xmax,num_points)
+    for I = linspace(xmin,xmax,num_points)
         xnum = xnum + 1;
         
         colour=[0,0,0,0]; 
@@ -159,7 +159,6 @@ for I = linspace(ymin,ymax,num_points)
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
                 equil = [r1(root)/A11,0,root]; % Find the equilibrium's co-ordinate
-                equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
                 if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 % If it is feasible
                     J_num = Jacobian(equil(1),equil(2),equil(3),A11,A12,A21,A22,P); % Calculate the Jacobian
@@ -177,11 +176,10 @@ for I = linspace(ymin,ymax,num_points)
 
         G = @(M) m2solve(M,A22,I,P);
         for root = FindRoots(G,0,I)
-            %check = G(root);  % We check it is actually a root
+            check = G(root);  % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
                 equil = [0,r2(root)/A22,root];  % Find the equilibrium's co-ordinate
-                equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
                 if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 % If it is feasible
                     J_num = Jacobian(equil(1),equil(2),equil(3),A11,A12,A21,A22,P);  % Calculate the Jacobian
@@ -199,13 +197,13 @@ for I = linspace(ymin,ymax,num_points)
 
         G = @(M) m3solve(M,A11,A12,A21,A22,I,P);
         for root = FindRoots(G,0,I)
-            %check = G(root);  % We check it is actually a root
+            %disp(root)
+            check = G(root);  % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
                 equil = [((A22*r1(root))-(A12*r2(root)))/(A11*A22-A12*A21),...
                 ((A11*r2(root))-(A21*r1(root)))/(A11*A22-A12*A21),...
                 root]; % Find the equilibrium's co-ordinate
-                equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
                 if equil(1) > 0 && equil(2) >0 && equil(3) >0 % If it is feasible
                     J_num = Jacobian(equil(1),equil(2),equil(3),A11,A12,A21,A22,P); % Calculate the Jacobian
@@ -285,6 +283,7 @@ for I = linspace(ymin,ymax,num_points)
 end
 
 %disp(colours)
+
 
 
 % Below is the custom Color Map created with RGB Triplets%
