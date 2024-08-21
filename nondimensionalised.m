@@ -177,7 +177,7 @@ for I = linspace(ymin,ymax,num_points)
 
         G = @(M) m2solve(M,A22,I,P);
         for root = FindRoots(G,0,I)
-            check = G(root);  % We check it is actually a root
+            %check = G(root);  % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
                 equil = [0,r2(root)/A22,root];  % Find the equilibrium's co-ordinate
@@ -198,8 +198,8 @@ for I = linspace(ymin,ymax,num_points)
         % We then do the same for Coexistence
 
         G = @(M) m3solve(M,A11,A12,A21,A22,I,P);
-        for root = FindRoots(G,0,20)
-            check = G(root);  % We check it is actually a root
+        for root = FindRoots(G,0,I)
+            %check = G(root);  % We check it is actually a root
             %disp(check)
             if -tolerance < check && check < tolerance % If it is as root
                 equil = [((A22*r1(root))-(A12*r2(root)))/(A11*A22-A12*A21),...
@@ -207,7 +207,7 @@ for I = linspace(ymin,ymax,num_points)
                 root]; % Find the equilibrium's co-ordinate
                 equil = round(equil, 3); % Round to deal with numerical errors
                 %disp(equil)
-                if equil(1) >= 0 && equil(2) >=0 && equil(3) >=0 % If it is feasible
+                if equil(1) > 0 && equil(2) >0 && equil(3) >0 % If it is feasible
                     J_num = Jacobian(equil(1),equil(2),equil(3),A11,A12,A21,A22,P); % Calculate the Jacobian
                     eigenvalues = real(eig(J_num)); % Find the real eigenvalues
                     %disp(eigenvalues)
