@@ -1,0 +1,307 @@
+tic
+% THE EQUATIONS:
+% C1' = C1*(r1(M) - a11*C1 - a12*C2)
+% C2' = C2*(r2(M) - a21*C1 - a22*C2)
+% M' = i - M - p*M*(C1 + C2)
+
+
+
+% THINGS TO DO WHEN RUNNING A NEW BIFURCATION DIAGRAM
+% 1 - Change your equations for r1 and r2
+% 2 - Change your equations for r1' and r2'
+% 3 - Set your parameters and hide the ones you want to plot
+% 4 - Choose the length and width of your plot
+% 5 - Choose the number of points to plot
+% 6 - Place the 2 parameters you want to plot into the for loops
+% 
+% These instructions are noted with numbers throughout the code by
+% capital letters
+
+
+% A function for finding the roots of an equation, given a lower bound
+% and an upper bound in which to search
+%Note that for fzero to find a root, we require an ODD number of roots
+%within our specified interval
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    tol = 1e-6; %Used to avoid double-counting roots
+    solutions = [];
+       if f(lower_bound)*f(upper_bound) < 0 %Checks if fzero can be run in this case
+           [X,FVAL,EXITFLAG] = fzero(f,[lower_bound,upper_bound]);
+           if EXITFLAG > 0
+               solutions = [solutions, X];
+               solutions_lower =FindRoots(f,lower_bound,X - tol);
+               solutions_upper = FindRoots(f,X + tol,upper_bound); 
+               %Bisects the interval into two disjoint intervals, then searches those for roots
+               solutions = [solutions_lower,solutions,solutions_upper];
+           end
+           if EXITFLAG <= 0 %Handles errors
+               disp('Warning: fsolve failed; printing EXITFLAG in next line')
+               disp(EXITFLAG)
+           end
+       else
+           %Given the endpoints of the interval both give outputs of the same sign (say, positive),
+           %we then check the minimum between the two to see if any roots exist
+           if f(lower_bound) > 0
+               X = fminbnd(f,lower_bound,upper_bound); 
+               if f(X) > 0
+                   return 
+               else
+                   %We use the minimum point to bisect our interval
+                   solutions_lower = FindRoots(f,lower_bound,X - tol);
+                   solutions_upper = FindRoots(f,X + tol,upper_bound);
+                   %Bisects the interval into two disjoint intervals, then searches those for roots
+                   solutions = [solutions_lower,solutions,solutions_upper];
+               end
+           else
+               g = @(x) -f(x); %MATLAB has no 'fmaxbnd' function so we must
+               %multiply everything by -1, then proceed as above
+               X = fminbnd(g,lower_bound,upper_bound); 
+               if f(X) < 0
+                   return 
+               else
+                   solutions_lower =FindRoots(f,lower_bound,X - tol);
+                   solutions_upper = FindRoots(f,X + tol,upper_bound);
+                   %Bisects the interval into two disjoint intervals, then searches those for roots
+                   solutions = [solutions_lower,solutions,solutions_upper];
+               end
+
+           end
+       end
+end
+
+
+% 1a - ALTER YOUR EQUATION FOR r1(M)
+function r1result = r1(M)
+    r1result = sech(M-5) + 0.9;
+end
+
+
+% 1b - ALTER YOUR EQUATION FOR r2(M)
+function r2result = r2(M)
+    r2result = tanh(7-M) + 0.79;
+end
+
+
+% 2a - ALTER YOUR EQUATION FOR r1'(M)
+function r1dashresult = r1dash(M)
+    r1dashresult = tanh(5-M)*sech(5-M);
+end
+
+
+% 2b - ALTER YOUR EQUATION FOR r2'(M)
+function r2dashresult = r2dash(M)
+    r2dashresult = -sech(7-M)^2;
+end
+
+
+% Jacobian
+function matrix = Jacobian(C1,C2,M,A11,A12,A21,A22,P)
+    matrix = [r1(M)-2*A11*C1-A12*C2, -A12*C1, C1*r1dash(M);
+        -A21*C2, r2(M)-A21*C1-2*A22*C2, C2*r2dash(M);
+        -P*M, -P*M, -1-P*C1-P*C2];
+end
+
+% To solve M1 Survival
+function m1 = m1solve(M,A11,I,P)
+    m1 = P.*M.*r1(M) - A11.*(I-M);
+end
+
+% To solve M2 Survival
+function m2 = m2solve(M,A22,I,P)
+    m2 = P.*M.*r2(M) - A22.*(I-M);
+end
+
+% To solve M3 (Coexistence)
+function m3 = m3solve(M,A11,A12,A21,A22,I,P)
+    m3 = M.*(1 + (r1(M).*(A22-A21) + r2(M).*(A11-A12)).*P/(A11*A22 - A12*A21)) - I;
+end
+
+
+% 3a - CHOOSE YOUR PARAMETERS
+% 3b - HIDE THE TWO YOU WANT TO PLOT
+A11 = 0.23;
+A12 = 0.7;
+A21 = 0.2;
+A22 = 0.67;
+%I = 8.5;
+%P = 3;
+
+
+
+% 4 - CHOOSE THE LENGTH AND WIDTH OF THE PLOTS
+ymin = 9;         % This is where you want the y-axis to begin
+ymax = 16;          % and end
+xmin = 0.14;        % The same for the x-axis
+xmax = 0.23;
+% NOTE - Do not set xmin or ymin to 0, just a small value instead!
+
+
+% 5 - CHOOSE THE NUMBER OF POINTS TO PLOT
+num_points = 250;   % This is the number of points along each axis (i.e. an nxn grid of points)
+
+colours = zeros(num_points);
+% This is a matrix containing the 'colours' we want to plot for each point
+% This will be filled with various numbers by the end
+
+
+% The following loops find a 'number' for each point which
+% indicates the type of stability at that point. It then places it
+% into the matrix of zeros we created above. A breakdown of the number
+% that we assign can be found below
+
+ynum=0;
+% 6a - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
+for I = linspace(ymin,ymax,num_points)
+    ynum = ynum + 1;
+    xnum = 0;
+    % 6b - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
+    % (Final instruction)
+    for P = linspace(xmin,xmax,num_points)
+        xnum = xnum + 1;
+        
+        colour=[0,0,0,0]; 
+        % To find the relevant colour, we first start by assigning each
+        % point a 4D vector. Each number represents the number of stable
+        % equilibria for a given equilibria type
+        % colour = [Coexistence, M2 survival, M1 survival, Extinction]
+        
+        
+        %Extinction equilibria  
+        if r1(I) < 0 && r2(I) < 0  % Stability criteria (extinction is always feasible)
+            colour(4) = colour(4) + 1; %If so, increase the number of stable Coexistence equilibria by 1
+        end
+
+        % M1 survival equilibria
+        G = @(M) m1solve(M,A11,I,P);
+        tic
+        for root = FindRoots(G,0,I)
+            stab1 = P*root*r2(root) - A21*(I-root); %Stability criteria for Microbe 1 survival
+            stab2 = I*A11 + P*root^2*r1dash(root);
+             if stab1 < 0 && stab2 > 0 % Check stability
+                  colour(3) = colour(3) + 1; %Increases number of stable M1 survival equilibria by 1
+             end
+        end
+
+
+        % M2 survival equilibria
+        G = @(M) m2solve(M,A22,I,P);
+        for root = FindRoots(G,0,I)
+            stab1 = P*root*r1(root) - A12*(I-root); %Stability criteria for Microbe 2 survival
+            stab2 = I*A22 + P*root^2*r2dash(root);
+             if stab1 < 0 &&  stab2 > 0 % Check stability
+                  colour(2) = colour(2) + 1; %Increases number of stable M2 survival equilibria by 1
+             end
+        end
+
+
+        %Coexistence equilibria
+
+        G = @(M) m3solve(M,A11,A12,A21,A22,I,P);
+        for root = FindRoots(G,0,I)
+                equil = [((A22*r1(root))-(A12*r2(root)))/(A11*A22-A12*A21),...
+                ((A11*r2(root))-(A21*r1(root)))/(A11*A22-A12*A21),...
+                root]; % Find the equilibrium explicitly
+                if equil(1) > 0 && equil(2) >0 % Check for feasibility
+                    J_num = Jacobian(equil(1),equil(2),root,A11,A12,A21,A22,P); % Calculate the Jacobian
+                    eigenvalues = real(eig(J_num)); % Find the real eigenvalues
+                    if eigenvalues(1) < 0 && eigenvalues(2) < 0 && eigenvalues(3) < 0 % Check real parts are negative
+                        colour(1) = colour(1) + 1; %Increases number of stable coexistence equilibria by 1
+                    end
+                end
+        end
+
+
+        disp(colour)
+
+
+        % Colour scheme (based off maximum number of equilibria of each
+        % type)
+
+        if colour == [0,0,0,0] % Black
+            finalcolour = 0;
+        end
+        if colour == [0,0,0,1] % Red
+            finalcolour = 1;
+        end
+        if colour == [0,0,1,0] | colour == [0,0,2,0] % Light Green
+            finalcolour = 2;
+        end
+        if colour == [0,1,0,0] | colour == [0,2,0,0] % Dark Green
+            finalcolour = 3;
+        end
+        if colour == [1,0,0,0] % Blue
+            finalcolour = 4;
+        end
+        if colour == [0,0,1,1] | colour == [0,0,2,1] % Light Yellow
+            finalcolour = 5;
+        end
+        if colour == [0,1,0,1] | colour == [0,2,0,1] % Dark Yellow
+            finalcolour = 6;
+        end
+        if colour == [1,0,0,1] % Magenta
+            finalcolour = 7;
+        end
+        if colour == [0,1,1,0] | colour == [0,2,2,0] % Green
+            finalcolour = 8;
+        end
+        if colour == [1,0,1,0] | colour == [1,0,2,0] % Light cyan
+            finalcolour = 9;
+        end
+        if colour == [1,1,0,0] | colour == [1,2,0,0] % Dark cyan
+            finalcolour = 10;
+        end
+        if colour == [0,1,1,1] | colour == [0,1,2,1] | colour == [0,2,1,1] | colour == [0,2,2,1] %Yellow
+            finalcolour = 11;
+        end
+        if colour == [1,0,1,1] | colour == [1,0,2,1] % Light grey
+            finalcolour = 12;
+        end
+        if colour == [1,1,0,1] | colour == [1,2,0,1] %Dark grey
+            finalcolour = 13;
+        end
+        if colour == [1,1,1,0] | colour == [1,1,2,1] | colour == [1,2,1,0] | colour == [1,2,2,0] % Cyan
+            finalcolour = 14;
+        end
+        if colour == [1,1,1,1] | colour == [1,2,1,1] | colour == [1,1,2,1] | colour == [1,2,2,1] % White
+            finalcolour = 15;
+        end
+    
+        colours(ynum,xnum) = finalcolour;
+        
+    end
+end
+
+% Below is the custom Color Map created with RGB Triplets%
+
+
+customColorMap = [
+    0, 0, 0;        % 0 = black
+    1, 0, 0;        % 1 = red
+    0.67, 1, 0;     % 2 = light green
+    0, 0.5, 0;      % 3 = dark green
+    0, 0, 1;        % 4 = blue
+    1, 1, 0.67;     % 5 = light yellow
+    0.75, 0.75, 0;  % 6 = dark yellow
+    1, 0, 1;        % 7 = magenta
+    0, 1, 0;        % 8 = green
+    0.63, 1, 1;     % 9 = light cyan
+    0, 0.74, 0.74;  % 10 = dark cyan
+    1, 1, 0;        % 11 = yellow
+    0.8, 0.8, 0.8;  % 12 = light grey
+    0.4, 0.4, 0.4;  % 13 = dark grey
+    0, 1, 1;        % 14 = cyan
+    1, 1, 1;        % 15 = white
+    ];
+
+
+% Finally, plot the points using imagesc
+
+yspace = linspace(ymin,ymax,num_points);
+xspace = linspace(xmin,xmax,num_points);
+figure;
+colormap(customColorMap)
+imagesc(xspace,yspace,colours)
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+colorbar;
+toc
