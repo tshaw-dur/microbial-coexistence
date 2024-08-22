@@ -23,16 +23,21 @@ tic
 %Note that for fzero to find a root, we require an ODD number of roots
 %within our specified interval
 function solutions = FindRoots(f,lower_bound,upper_bound) 
-    tol = 1e-6; %Used to avoid double-counting roots
+    tol = 1e-7; %Used to avoid double-counting roots
     solutions = [];
-       if f(lower_bound)*f(upper_bound) < 0 %Checks if fzero can be run in this case
-           [X,FVAL,EXITFLAG] = fzero(f,[lower_bound,upper_bound]);
+    stack = {[lower_bound,upper_bound]}; %Uses a stack to avoid recursion and improve efficiency
+    while ~isempty(stack)
+        interval = stack{end};
+        stack(end) = [];
+        l = interval(1);
+        u = interval(2);
+        if f(l)*f(u) < 0 %Checks if fzero can be run in this case
+           [X,FVAL,EXITFLAG] = fzero(f,[l,u]);
            if EXITFLAG > 0
                solutions = [solutions, X];
-               solutions_lower =FindRoots(f,lower_bound,X - tol);
-               solutions_upper = FindRoots(f,X + tol,upper_bound); 
+               stack{end + 1} = [l, X-tol];
+               stack{end + 1} = [X+tol, u];
                %Bisects the interval into two disjoint intervals, then searches those for roots
-               solutions = [solutions_lower,solutions,solutions_upper];
            end
            if EXITFLAG <= 0 %Handles errors
                disp('Warning: fsolve failed; printing EXITFLAG in next line')
@@ -41,32 +46,26 @@ function solutions = FindRoots(f,lower_bound,upper_bound)
        else
            %Given the endpoints of the interval both give outputs of the same sign (say, positive),
            %we then check the minimum between the two to see if any roots exist
-           if f(lower_bound) > 0
-               X = fminbnd(f,lower_bound,upper_bound); 
-               if f(X) > 0
-                   return 
-               else
-                   %We use the minimum point to bisect our interval
-                   solutions_lower = FindRoots(f,lower_bound,X - tol);
-                   solutions_upper = FindRoots(f,X + tol,upper_bound);
+           if f(l) > 0
+               X = fminbnd(f,l,u); 
+               if f(X) < 0
+                   stack{end + 1} = [l, X-tol];
+                   stack{end + 1} = [X+tol, u];
                    %Bisects the interval into two disjoint intervals, then searches those for roots
-                   solutions = [solutions_lower,solutions,solutions_upper];
                end
            else
                g = @(x) -f(x); %MATLAB has no 'fmaxbnd' function so we must
                %multiply everything by -1, then proceed as above
-               X = fminbnd(g,lower_bound,upper_bound); 
-               if f(X) < 0
-                   return 
-               else
-                   solutions_lower =FindRoots(f,lower_bound,X - tol);
-                   solutions_upper = FindRoots(f,X + tol,upper_bound);
+               X = fminbnd(g,l,u); 
+               if f(X) > 0
+                   stack{end + 1} = [l, X-tol];
+                   stack{end + 1} = [X+tol, u];
                    %Bisects the interval into two disjoint intervals, then searches those for roots
-                   solutions = [solutions_lower,solutions,solutions_upper];
                end
 
            end
        end
+    end
 end
 
 
