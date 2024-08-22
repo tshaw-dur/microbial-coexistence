@@ -16,7 +16,17 @@ function r_dash_result = rdash(M)
         -tanh(M-7)*sech(M-7)];
 end
 
-% JACOBIAN HERE %
+% Jacobian function
+function jac = Jacobian(C_vec,M,A_mat,I,P)
+    first_vec = r(M) - A_mat * C_vec;
+    top_left = - A_mat.*C_vec + diag(first_vec);    
+    top_right = C_vec.*rdash(M);
+    bottom_left = -P*M*ones(1,length(C_vec));
+    bottom_right = -I/M;
+    top = [top_left,top_right];
+    bottom = [bottom_left,bottom_right];
+    jac = [top;bottom];
+end
 
 
 % Here you describe your matrix for A. This is a square matrix of whichever
