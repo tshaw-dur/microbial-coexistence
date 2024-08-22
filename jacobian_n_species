@@ -1,1 +1,36 @@
+% Here you input your equations for r(M) as a vector, with
+% each entry being each r_i
+function r_result = r(M)
+    r_result = [
+        sech(M-5) - 0.2;
+        sech(M-6) - 0.2;
+        sech(M-7) - 0.2];
+end
+
+% Here you input your equations for r'(M) as vector, calculated
+% by hand, with each entry being each r_i'
+function r_dash_result = rdash(M)
+    r_dash_result = [
+        -tanh(M-5)*sech(M-5);
+        -tanh(M-6)*sech(M-6);
+        -tanh(M-7)*sech(M-7)];
+end
+
+
+%Jacobian function
+function jac = Jacobian(C_vec,M,A_mat,I,P)
+    first_vec = r(M) - A_mat * C_vec;
+    top_left = - A_mat.*C_vec + diag(first_vec);    
+    top_right = C_vec.*rdash(M);
+    bottom_left = -P*M*ones(1,length(C_vec));
+    bottom_right = -I/M;
+    top = [top_left,top_right];
+    bottom = [bottom_left,bottom_right];
+    jac = [top;bottom];
+end
+
+x = Jacobian(C,10,A,20,2);
+disp(x)
+
+
 
