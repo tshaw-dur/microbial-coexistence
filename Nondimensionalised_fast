@@ -172,7 +172,6 @@ for I = linspace(ymin,ymax,num_points)
 
         % M1 survival equilibria
         G = @(M) m1solve(M,A11,I,P);
-        tic
         for root = FindRoots(G,0,I)
             stab1 = P*root*r2(root) - A21*(I-root); %Stability criteria for Microbe 1 survival
             stab2 = I*A11 + P*root^2*r1dash(root);
