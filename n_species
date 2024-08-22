@@ -1,1 +1,72 @@
+% Here you input your equations for r(M) as a vector, with
+% each entry being each r_i
+function r_result = r(M)
+    r_result = [
+        sech(M-5) - 0.2;
+        sech(M-6) - 0.2;
+        sech(M-7) - 0.2];
+end
+
+% Here you input your equations for r'(M) as vector, calculated
+% by hand, with each entry being each r_i'
+function r_dash_result = rdash(M)
+    r_dash_result = [
+        -tanh(M-5)*sech(M-5);
+        -tanh(M-6)*sech(M-6);
+        -tanh(M-7)*sech(M-7)];
+end
+
+% JACOBIAN HERE %
+
+
+% Here you describe your matrix for A. This is a square matrix of whichever
+% dimension you choose.
+A = 
+[a11, a12, a13;
+a21, a22, a23;
+a31, a32, a33];
+
+
+% Here you choose the length and width of the plots
+x_min = 0.01;
+x_max = 10;
+y_min = 0.01;
+y_max = 10;
+
+
+% Here you choose how many points you want to create on each axis
+x_num_points = 100;
+y_num_points = 100;
+
+
+% This is a matrix containing the 'colours' we want to plot for each point.
+% This will be filled with various numbers by the end
+colours = zeros(x_num_points,y_num_points);
+
+
+% FINDING THE EQUILIBRIA HERE
+
+% CHECK FEASIBILITY
+
+% CHECK STABILITY
+
+% COLOURS HERE
+
+% COLOR MAP HERE
+customColorMap = [
+    0, 0 ,0;
+    1, 1, 1;
+    ];
+
+
+%Plot the points using imagesc
+yspace = linspace(ymin,ymax,y_num_points);
+xspace = linspace(xmin,xmax,x_num_points);
+figure;
+colormap(customColorMap)
+imagesc(xspace,yspace,colours)
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+colorbar;
+toc
 
