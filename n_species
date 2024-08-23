@@ -1,3 +1,51 @@
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    tol = 1e-7; %Used to avoid double-counting roots
+    solutions = [];
+    stack = {[lower_bound,upper_bound]};
+    while ~isempty(stack)
+        interval = stack{end};
+        stack(end) = [];
+        l = interval(1);
+        u = interval(2);
+        if f(l)*f(u) < 0 %Checks if fzero can be run in this case
+           [X,FVAL,EXITFLAG] = fzero(f,[l,u]);
+           if EXITFLAG > 0
+               solutions = [solutions, X];
+               stack = [stack,{[l, X-tol]}];
+               stack = [stack, {[X+tol, u]}];
+               %Bisects the interval into two disjoint intervals, then searches those for roots
+           end
+           if EXITFLAG <= 0 %Handles errors
+               disp('Warning: fsolve failed; printing EXITFLAG in next line')
+               disp(EXITFLAG)
+           end
+       else
+           %Given the endpoints of the interval both give outputs of the same sign (say, positive),
+           %we then check the minimum between the two to see if any roots exist
+           if f(l) > 0
+               X = fminbnd(f,l,u); 
+               if f(X) < 0
+                   stack = [stack,{[l, X-tol]}];
+                   stack = [stack, {[X+tol, u]}];
+                   %Bisects the interval into two disjoint intervals, then searches those for roots
+               end
+           else
+               g = @(x) -f(x); %MATLAB has no 'fmaxbnd' function so we must
+               %multiply everything by -1, then proceed as above
+               X = fminbnd(g,l,u); 
+               if f(X) > 0
+                   stack = [stack,{[l, X-tol]}];
+                   stack = [stack, {[X+tol, u]}];
+                   %Bisects the interval into two disjoint intervals, then searches those for roots
+               end
+
+           end
+       end
+    end
+end
+
+N = 4; %Number of species
+
 % Here you input your equations for r(M) as a vector, with
 % each entry being each r_i
 function r_result = r(M)
@@ -16,6 +64,15 @@ function r_dash_result = rdash(M)
         -tanh(M-7)*sech(M-7)];
 end
 
+function r_s = reduced(vectorfunction, indices,M)
+   r_s = vectorfunction(M);
+   r_s = r_s(indices);
+end
+
+%Equilibrium equation
+function eq = eqsolve(M,A,I,P,R)
+  eq = I - M(1 + P*(A\R));
+end
 % Jacobian function
 function jac = Jacobian(C_vec,M,A_mat,I,P)
     first_vec = r(M) - A_mat * C_vec;
@@ -31,8 +88,7 @@ end
 
 % Here you describe your matrix for A. This is a square matrix of whichever
 % dimension you choose.
-A = 
-[a11, a12, a13;
+A = [a11, a12, a13;
 a21, a22, a23;
 a31, a32, a33];
 
@@ -48,17 +104,48 @@ y_max = 10;
 x_num_points = 100;
 y_num_points = 100;
 
+% 6a - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
+for I = linspace(ymin,ymax,num_points)
+    ynum = ynum + 1;
+    xnum = 0;
+    % 6b - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
+    % (Final instruction)
+    for P = linspace(xmin,xmax,num_points)
+        xnum = xnum + 1;
+        
+    % This is a matrix containing the 'colours' we want to plot for each point.
+    % This will be filled with various numbers by the end
+    colours = zeros(x_num_points,y_num_points);
 
-% This is a matrix containing the 'colours' we want to plot for each point.
-% This will be filled with various numbers by the end
-colours = zeros(x_num_points,y_num_points);
-
-
-% FINDING THE EQUILIBRIA HERE
-
-% CHECK FEASIBILITY
-
-% CHECK STABILITY
+       for j = 0:2^N-1 %Counter cycles through all combinations of non-extinct species
+           i = j;
+           index = N;
+           vect = zeros(1, N);   
+           while i > 0
+               vect(index) = mod(i, 2); 
+               i = floor(i / 2); 
+               index = index - 1; 
+           end %Converts to a binary vector
+           eqno = sum(vect);
+           I = find(vect); %Converts binary vector to index set
+           As = A(I,I);
+           rs = @(M) reduced(r, I, M);
+           rsderiv = @(M) reduced(rdash, I, M); %Sets relevant submatrices and vector functions
+   
+           G = @(M) eqsolve(M,As,i,p,rs,rsderiv);
+           for root = FindRoots(G,0,I)
+                C_vect = As\r(root);% Find the equilibrium's co-ordinate
+                    if all(C_vect > 0) % Checks feasibility
+                        J_num = Jacobian(C_vect,root,A,I,P); % Calculates the Jacobian
+                        eigenvalues = real(eig(J_num)); % Find the real eigenvalues
+                    if all(eigenvalues < 0) % Check real parts are negative
+                        colour(eqno) = colour(eqno) + 1; %If so, increase the number of stable coexistence equilibria by 1
+                    end
+                end
+           end
+       end
+    end
+end
 
 % COLOURS HERE
 
@@ -79,4 +166,3 @@ set(gca, 'CLim', [0 length(customColorMap) - 1]);
 axis xy
 colorbar;
 toc
-
