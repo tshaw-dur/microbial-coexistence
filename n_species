@@ -44,15 +44,14 @@ function solutions = FindRoots(f,lower_bound,upper_bound)
     end
 end
 
-N = 4; %Number of species
+N = 2; %Number of species
 
 % Here you input your equations for r(M) as a vector, with
 % each entry being each r_i
 function r_result = r(M)
     r_result = [
         sech(M-5) - 0.2;
-        sech(M-6) - 0.2;
-        sech(M-7) - 0.2];
+        sech(M-6) - 0.2];
 end
 
 % Here you input your equations for r'(M) as vector, calculated
@@ -60,8 +59,7 @@ end
 function r_dash_result = rdash(M)
     r_dash_result = [
         -tanh(M-5)*sech(M-5);
-        -tanh(M-6)*sech(M-6);
-        -tanh(M-7)*sech(M-7)];
+        -tanh(M-6)*sech(M-6)];
 end
 
 function r_s = reduced(vectorfunction, indices,M)
@@ -70,9 +68,10 @@ function r_s = reduced(vectorfunction, indices,M)
 end
 
 %Equilibrium equation
-function eq = eqsolve(M,A,I,P,R)
-  eq = I - M(1 + P*(A\R));
+function eq = eqsolve(M,A,I,P,R,N)
+    eq = I - M(1 + P*ones(1,N)*(A\R));
 end
+
 % Jacobian function
 function jac = Jacobian(C_vec,M,A_mat,I,P)
     first_vec = r(M) - A_mat * C_vec;
@@ -88,62 +87,81 @@ end
 
 % Here you describe your matrix for A. This is a square matrix of whichever
 % dimension you choose.
-A = [a11, a12, a13;
-a21, a22, a23;
-a31, a32, a33];
+A = [0.5, 0;
+0, 5];
 
+% Define your I and P
+% I = 
+% P =
 
 % Here you choose the length and width of the plots
 x_min = 0.01;
-x_max = 10;
+x_max = 4;
 y_min = 0.01;
-y_max = 10;
+y_max = 30;
 
 
 % Here you choose how many points you want to create on each axis
-x_num_points = 100;
-y_num_points = 100;
+x_num_points = 10;
+y_num_points = 10;
 
+% This is a matrix containing the 'colours' we want to plot for each point.
+% This will be filled with various numbers by the end
+colours = zeros(x_num_points,y_num_points);
+
+ynum=0;
 % 6a - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
-for I = linspace(ymin,ymax,num_points)
+for I = linspace(y_min,y_max,y_num_points)
     ynum = ynum + 1;
     xnum = 0;
     % 6b - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
     % (Final instruction)
-    for P = linspace(xmin,xmax,num_points)
+    for P = linspace(x_min,x_max,x_num_points)
         xnum = xnum + 1;
         
-    % This is a matrix containing the 'colours' we want to plot for each point.
-    % This will be filled with various numbers by the end
-    colours = zeros(x_num_points,y_num_points);
-
-       for j = 0:2^N-1 %Counter cycles through all combinations of non-extinct species
-           i = j;
-           index = N;
-           vect = zeros(1, N);   
-           while i > 0
-               vect(index) = mod(i, 2); 
-               i = floor(i / 2); 
-               index = index - 1; 
-           end %Converts to a binary vector
-           eqno = sum(vect);
-           I = find(vect); %Converts binary vector to index set
-           As = A(I,I);
-           rs = @(M) reduced(r, I, M);
-           rsderiv = @(M) reduced(rdash, I, M); %Sets relevant submatrices and vector functions
+        colour = zeros(1,N);
+        %Counter cycles through all combinations of non-extinct species
+        for j = 1:2^N-1 
+            i = j;
+            index = N;
+            vect = zeros(1, N);   
+            while i > 0
+                vect(index) = mod(i, 2); 
+                i = floor(i / 2); 
+                index = index - 1; 
+            end %Converts to a binary vector
+            disp('vect')
+            disp(vect)
+            eqno = sum(vect); % The number of species that are alive
+            disp('eqno')
+            disp(eqno)
+            index_set = find(vect); %Converts binary vector to index set
+            disp('index_set')
+            disp(index_set)
+            As = A(index_set,index_set);
+            rs = @(M) reduced(r, index_set, M);
+            disp('As')
+            disp(As)
+            disp('rs')
+            disp(rs)
+            rsderiv = @(M) reduced(rdash, index_set, M); %Sets relevant submatrices and vector functions
    
-           G = @(M) eqsolve(M,As,i,p,rs,rsderiv);
-           for root = FindRoots(G,0,I)
-                C_vect = As\r(root);% Find the equilibrium's co-ordinate
-                    if all(C_vect > 0) % Checks feasibility
-                        J_num = Jacobian(C_vect,root,A,I,P); % Calculates the Jacobian
-                        eigenvalues = real(eig(J_num)); % Find the real eigenvalues
-                    if all(eigenvalues < 0) % Check real parts are negative
-                        colour(eqno) = colour(eqno) + 1; %If so, increase the number of stable coexistence equilibria by 1
-                    end
-                end
-           end
-       end
+            G = @(M) eqsolve(M,As,I,P,rs,N);
+            for root = FindRoots(G,0,I)
+                 C_vect = As\r(root);% Find the equilibrium's co-ordinate
+                 if all(C_vect >= 0) % Checks feasibility
+                     J_num = Jacobian(C_vect,root,A,I,P); % Calculates the Jacobian
+                     eigenvalues = real(eig(J_num)); % Find the real eigenvalues
+                     if all(eigenvalues < 0) % Check real parts are negative
+                         colour(eqno) = colour(eqno) + 1; %If so, increase the number of stable coexistence equilibria by 1
+                     end
+                 end
+            end
+
+            disp(colour)
+
+
+        end
     end
 end
 
@@ -157,12 +175,12 @@ customColorMap = [
 
 
 %Plot the points using imagesc
-yspace = linspace(ymin,ymax,y_num_points);
-xspace = linspace(xmin,xmax,x_num_points);
-figure;
-colormap(customColorMap)
-imagesc(xspace,yspace,colours)
-set(gca, 'CLim', [0 length(customColorMap) - 1]);
-axis xy
-colorbar;
-toc
+%yspace = linspace(ymin,ymax,y_num_points);
+%xspace = linspace(xmin,xmax,x_num_points);
+%figure;
+%colormap(customColorMap)
+%imagesc(xspace,yspace,colours)
+%set(gca, 'CLim', [0 length(customColorMap) - 1]);
+%axis xy
+%colorbar;
+%toc
