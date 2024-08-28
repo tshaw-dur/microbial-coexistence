@@ -1,3 +1,6 @@
+tic
+
+% Finds the roots of an equation
 function solutions = FindRoots(f,lower_bound,upper_bound) 
     tol = 1e-7; %Used to avoid double-counting roots
     solutions = [];
@@ -44,33 +47,6 @@ function solutions = FindRoots(f,lower_bound,upper_bound)
     end
 end
 
-N = 2; %Number of species
-
-% Here you input your equations for r(M) as a vector, with
-% each entry being each r_i
-function r_result = r(M)
-    r_result = [
-        sech(M-5) - 0.2;
-        sech(M-6) - 0.2];
-end
-
-% Here you input your equations for r'(M) as vector, calculated
-% by hand, with each entry being each r_i'
-function r_dash_result = rdash(M)
-    r_dash_result = [
-        -tanh(M-5)*sech(M-5);
-        -tanh(M-6)*sech(M-6)];
-end
-
-function r_s = reduced(vectorfunction, indices,M)
-   r_s = vectorfunction(M);
-   r_s = r_s(indices);
-end
-
-%Equilibrium equation
-function eq = eqsolve(M,A,I,P,R,N)
-    eq = I - M(1 + P*ones(1,N)*(A\R));
-end
 
 % Jacobian function
 function jac = Jacobian(C_vec,M,A_mat,I,P)
@@ -85,102 +61,150 @@ function jac = Jacobian(C_vec,M,A_mat,I,P)
 end
 
 
-% Here you describe your matrix for A. This is a square matrix of whichever
-% dimension you choose.
-A = [0.5, 0;
-0, 5];
+% Turns a number into binary
+function bin = turn_binary(j,N)
+    number = j;
+    index = N;
+    binary = zeros(1,N);
+    while number > 0
+        binary(index) = mod(number, 2); 
+        number = floor(number / 2); 
+        index = index - 1; 
+    end
+    bin = binary;
+end
 
-% Define your I and P
-% I = 
-% P =
 
-% Here you choose the length and width of the plots
+
+
+
+% To create the plots, complete the following instructions from
+% items 1 to 8.
+
+N = 2; % 1 - CHANGE THE NUMBER OF SPECIES
+
+
+% 2 - INPUT YOUR EQUATIONS FOR R(M) AS A VECTOR
+function r_result = r(M)
+    r_result = [
+        sech(M-5) - 0.2;
+        sech(M-6) - 0.2];
+end
+
+% 3 - INPUT YOUR EQUATIONS FOR R'(M) AS A VECTOR
+function r_dash_result = rdash(M)
+    r_dash_result = [
+        -tanh(M-5)*sech(M-5);
+        -tanh(M-6)*sech(M-6)];
+end
+
+
+% Reduces r
+function r_s = reduced(indices, M)
+   r_s = r(M);
+   r_s = r_s(indices);
+end
+
+
+% 4 - CHANGE I AND P (and hash out when not in use)
+I = 8.5;
+P = 3;
+
+% 5 - CHOOSE THE LENGTH OF YOUR PLOTS AND HOW MANY POINTS ON EACH AXIS
 x_min = 0.01;
-x_max = 4;
+x_max = 25;
 y_min = 0.01;
-y_max = 30;
+y_max = 10;
 
+num_points = 300;
 
-% Here you choose how many points you want to create on each axis
-x_num_points = 10;
-y_num_points = 10;
+% This is a 3x3 array containing all the data we need. Each "layer" for a
+% given z-value describes one of the equivalent equilibria types, of which
+% there are 2^N in total
+colours = zeros(num_points,num_points,2^N);
 
-% This is a matrix containing the 'colours' we want to plot for each point.
-% This will be filled with various numbers by the end
-colours = zeros(x_num_points,y_num_points);
+y_num=0;
+% 6 - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
+for A11 = linspace(y_min,y_max,num_points)
 
-ynum=0;
-% 6a - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
-for I = linspace(y_min,y_max,y_num_points)
-    ynum = ynum + 1;
-    xnum = 0;
-    % 6b - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
-    % (Final instruction)
-    for P = linspace(x_min,x_max,x_num_points)
-        xnum = xnum + 1;
+    y_num = y_num + 1;
+    x_num = 0;
+
+    % 7 - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
+    for I = linspace(x_min,x_max,num_points)
+        x_num = x_num + 1;
         
-        colour = zeros(1,N);
-        %Counter cycles through all combinations of non-extinct species
-        for j = 1:2^N-1 
-            i = j;
-            index = N;
-            vect = zeros(1, N);   
-            while i > 0
-                vect(index) = mod(i, 2); 
-                i = floor(i / 2); 
-                index = index - 1; 
-            end %Converts to a binary vector
-            disp('vect')
-            disp(vect)
-            eqno = sum(vect); % The number of species that are alive
-            disp('eqno')
-            disp(eqno)
-            index_set = find(vect); %Converts binary vector to index set
-            disp('index_set')
-            disp(index_set)
-            As = A(index_set,index_set);
-            rs = @(M) reduced(r, index_set, M);
-            disp('As')
-            disp(As)
-            disp('rs')
-            disp(rs)
-            rsderiv = @(M) reduced(rdash, index_set, M); %Sets relevant submatrices and vector functions
-   
-            G = @(M) eqsolve(M,As,I,P,rs,N);
-            for root = FindRoots(G,0,I)
-                 C_vect = As\r(root);% Find the equilibrium's co-ordinate
-                 if all(C_vect >= 0) % Checks feasibility
-                     J_num = Jacobian(C_vect,root,A,I,P); % Calculates the Jacobian
-                     eigenvalues = real(eig(J_num)); % Find the real eigenvalues
-                     if all(eigenvalues < 0) % Check real parts are negative
-                         colour(eqno) = colour(eqno) + 1; %If so, increase the number of stable coexistence equilibria by 1
-                     end
-                 end
+        %8 - CHANGE YOUR STRUCTURE AND VALUES OF A
+        % (and hash out when not in use)
+        %A11 = 0.5
+        A12 = 0;
+        A21 = 0;
+        A22 = 5;
+
+        A = [A11, A12;
+        A21, A22];
+
+        % For n-species, there are 2^N possible equilibria. We go through
+        % each of these equilibria with a for loop (instead of 1 to 2^N, we
+        % do 0 to 2^N - 1). We also separate j = 0 as a boundary case.
+        
+        %j = 0 (Extinction)
+        J_num = Jacobian(zeros(N,1),I,A,I,P);
+        eigenvalues = real(eig(J_num));
+        %disp(eigenvalues)
+        if all (eigenvalues < 0)
+            colours(y_num,x_num,1) = 1;
+        end
+
+        for j = 1:2^N-1      
+            binary = turn_binary(j,N);      % Represent as a binary number
+            % If binary(i) = 0, C_i is dead at this equilibrium
+            % If binary(i) = 1, C_i survives at this equilibrium
+            surviving_Cs = find(binary);    % Make a list of positions of surviving C_i's
+            reduced_A = A(surviving_Cs,surviving_Cs);   % Reduce A
+            reduced_r = @(M) reduced(surviving_Cs,M);   % Reduce r
+            F = @(M) reduced_A \ reduced_r(M);
+            G = @(M) I - M*(1 + P*ones(1,length(surviving_Cs))*(F(M)));
+            total_stable = 0;
+            for root = FindRoots(G,0,I) % Solve the equation in terms of M
+                C_vect = reduced_A \ reduced_r(root); % Work out the positive Cs
+                if all (C_vect >= 0)
+                    C_full = zeros(N,1);
+                    for i = 1:length(C_vect)
+                        C_full(surviving_Cs(i)) = C_vect(i); % Add them to the full C vector
+                    end
+                    J_num = Jacobian(C_full,root,A,I,P);
+                    eigenvalues = real(eig(J_num));
+                    if all (eigenvalues < 0)            % If all evals negative, increase number of stable 
+                        total_stable = total_stable + 1;
+                    end
+                end
             end
-
-            disp(colour)
-
+            
+            colours(y_num,x_num,j+1) = total_stable; % Add this data to the main array
 
         end
     end
 end
 
-% COLOURS HERE
-
-% COLOR MAP HERE
 customColorMap = [
-    0, 0 ,0;
-    1, 1, 1;
+    0, 0, 0; % 0 = black
+    1, 0, 0; % 1 = red
+    0, 0, 1  % 2 = blue
     ];
 
+% Finally, plot the points using imagesc
 
-%Plot the points using imagesc
-%yspace = linspace(ymin,ymax,y_num_points);
-%xspace = linspace(xmin,xmax,x_num_points);
-%figure;
-%colormap(customColorMap)
-%imagesc(xspace,yspace,colours)
-%set(gca, 'CLim', [0 length(customColorMap) - 1]);
-%axis xy
-%colorbar;
-%toc
+yspace = linspace(y_min,y_max,num_points);
+xspace = linspace(x_min,x_max,num_points);
+
+for i = 1:2^N
+    figure;
+    colormap(customColorMap)
+    imagesc(xspace,yspace,colours(:,:,i))
+    set(gca, 'CLim', [0 length(customColorMap) - 1]);
+    axis xy
+end
+
+
+toc
