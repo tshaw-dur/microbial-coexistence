@@ -71,25 +71,25 @@ end
 
 % 1a - ALTER YOUR EQUATION FOR r1(M)
 function r1result = r1(M)
-    r1result = sech(M-5) + 0.9;
+    r1result = sech(M-5) - 0.2;
 end
 
 
 % 1b - ALTER YOUR EQUATION FOR r2(M)
 function r2result = r2(M)
-    r2result = tanh(7-M) + 0.79;
+    r2result = sech(M-7.5) - 0.2;
 end
 
 
 % 2a - ALTER YOUR EQUATION FOR r1'(M)
 function r1dashresult = r1dash(M)
-    r1dashresult = tanh(5-M)*sech(5-M);
+    r1dashresult = -sech(M-5)*tanh(M-5);
 end
 
 
 % 2b - ALTER YOUR EQUATION FOR r2'(M)
 function r2dashresult = r2dash(M)
-    r2dashresult = -sech(7-M)^2;
+    r2dashresult = -sech(M-7.5)*tanh(M-7.5);
 end
 
 
@@ -118,25 +118,25 @@ end
 
 % 3a - CHOOSE YOUR PARAMETERS
 % 3b - HIDE THE TWO YOU WANT TO PLOT
-A11 = 0.23;
-A12 = 0.7;
-A21 = 0.2;
-A22 = 0.67;
-%I = 8.5;
-%P = 3;
+A11 = 0.5;
+A12 = 0;
+A21 = 0;
+%A22 = 4;
+I = 9.5;
+%P = 1;
 
 
 
 % 4 - CHOOSE THE LENGTH AND WIDTH OF THE PLOTS
-ymin = 9;         % This is where you want the y-axis to begin
-ymax = 16;          % and end
-xmin = 0.14;        % The same for the x-axis
-xmax = 0.23;
+ymin = 0.01;         % This is where you want the y-axis to begin
+ymax = 2;          % and end
+xmin = 0.01;        % The same for the x-axis
+xmax = 1;
 % NOTE - Do not set xmin or ymin to 0, just a small value instead!
 
 
 % 5 - CHOOSE THE NUMBER OF POINTS TO PLOT
-num_points = 250;   % This is the number of points along each axis (i.e. an nxn grid of points)
+num_points = 300;   % This is the number of points along each axis (i.e. an nxn grid of points)
 
 colours = zeros(num_points);
 % This is a matrix containing the 'colours' we want to plot for each point
@@ -150,7 +150,7 @@ colours = zeros(num_points);
 
 ynum=0;
 % 6a - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
-for I = linspace(ymin,ymax,num_points)
+for A22 = linspace(ymin,ymax,num_points)
     ynum = ynum + 1;
     xnum = 0;
     % 6b - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
@@ -227,7 +227,7 @@ for I = linspace(ymin,ymax,num_points)
         if colour == [0,1,0,0] | colour == [0,2,0,0] % Dark Green
             finalcolour = 3;
         end
-        if colour == [1,0,0,0] % Blue
+        if colour == [1,0,0,0] | colour == [2,0,0,0] % Blue
             finalcolour = 4;
         end
         if colour == [0,0,1,1] | colour == [0,0,2,1] % Light Yellow
@@ -236,31 +236,31 @@ for I = linspace(ymin,ymax,num_points)
         if colour == [0,1,0,1] | colour == [0,2,0,1] % Dark Yellow
             finalcolour = 6;
         end
-        if colour == [1,0,0,1] % Magenta
+        if colour == [1,0,0,1] | colour == [2,0,0,1] % Magenta
             finalcolour = 7;
         end
         if colour == [0,1,1,0] | colour == [0,2,2,0] % Green
             finalcolour = 8;
         end
-        if colour == [1,0,1,0] | colour == [1,0,2,0] % Light cyan
+        if colour == [1,0,1,0] | colour == [1,0,2,0] | colour == [2,0,1,0] | colour == [2,0,2,0] % Light cyan
             finalcolour = 9;
         end
-        if colour == [1,1,0,0] | colour == [1,2,0,0] % Dark cyan
+        if colour == [1,1,0,0] | colour == [1,2,0,0] | colour == [2,1,0,0] | colour == [2,2,0,0]% Dark cyan
             finalcolour = 10;
         end
         if colour == [0,1,1,1] | colour == [0,1,2,1] | colour == [0,2,1,1] | colour == [0,2,2,1] %Yellow
             finalcolour = 11;
         end
-        if colour == [1,0,1,1] | colour == [1,0,2,1] % Light grey
+        if colour == [1,0,1,1] | colour == [1,0,2,1] | colour == [2,0,1,1] | colour == [2,0,2,1]% Light grey
             finalcolour = 12;
         end
-        if colour == [1,1,0,1] | colour == [1,2,0,1] %Dark grey
+        if colour == [1,1,0,1] | colour == [1,2,0,1] | colour == [2,1,0,1] | colour == [2,2,0,1]%Dark grey
             finalcolour = 13;
         end
-        if colour == [1,1,1,0] | colour == [1,1,2,1] | colour == [1,2,1,0] | colour == [1,2,2,0] % Cyan
+        if colour == [1,1,1,0] | colour == [1,1,2,0] | colour == [1,2,1,0] | colour == [1,2,2,0] | colour == [2,1,1,0] | colour == [2,1,2,0] | colour == [2,2,1,0] | colour == [2,2,2,0] % Cyan
             finalcolour = 14;
         end
-        if colour == [1,1,1,1] | colour == [1,2,1,1] | colour == [1,1,2,1] | colour == [1,2,2,1] % White
+        if colour == [1,1,1,1] | colour == [1,2,1,1] | colour == [1,1,2,1] | colour == [1,2,2,1] | colour == [2,1,1,1] | colour == [2,2,1,1] | colour == [2,1,2,1] | colour == [2,2,2,1] % White
             finalcolour = 15;
         end
     
