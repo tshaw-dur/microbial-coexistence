@@ -1,0 +1,19 @@
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    num_points = 1e3;    %Adjusts number of subintervals. Default value is 1e3
+    x = linspace(lower_bound,upper_bound,num_points);
+    fvals = f(x); %Evaluates function at each subinterval boundary
+    sign_check = diff(sign(fvals)) ~= 0; %Checks whether the value of the function at the endpoints of
+    %each subinterval has a different sign which, by IVT means the subinterval contains a root
+    I = find(sign_check); %Finds the subintervals which contain a root. 
+    %If num_points is large enough, we can be confident that each subinterval contains at most one root
+    solutions = [];
+        for i = I
+            [X,FVAL,EXITFLAG] = fzero(f,[x(i-1),x(i+1)]); %Uses fzero to find the root 
+            if EXITFLAG <= 0
+                disp('Warning: fsolve failed; printing EXITFLAG in next line') %Error handling
+                disp(EXITFLAG)
+            else
+                solutions = [solutions, X];
+            end
+        end
+end
