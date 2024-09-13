@@ -2,49 +2,23 @@ tic
 
 % Finds the roots of an equation
 function solutions = FindRoots(f,lower_bound,upper_bound) 
-    tol = 1e-7; %Used to avoid double-counting roots
+    num_points = 1e4;    %Adjusts number of subintervals. Default value is 1e3
+    x = linspace(lower_bound,upper_bound,num_points);
+    fvals = f(x); %Evaluates function at each subinterval boundary
+    sign_check = diff(sign(fvals)) ~= 0; %Checks whether the value of the function at the endpoints of
+    %each subinterval has a different sign which, by IVT means the subinterval contains a root
+    I = find(sign_check); %Finds the subintervals which contain a root. 
+    %If num_points is large enough, we can be confident that each subinterval contains at most one root
     solutions = [];
-    stack = {[lower_bound,upper_bound]};
-    while ~isempty(stack)
-        interval = stack{end};
-        stack(end) = [];
-        l = interval(1);
-        u = interval(2);
-        if f(l)*f(u) < 0 %Checks if fzero can be run in this case
-           [X,FVAL,EXITFLAG] = fzero(f,[l,u]);
-           if EXITFLAG > 0
-               solutions = [solutions, X];
-               stack = [stack,{[l, X-tol]}];
-               stack = [stack, {[X+tol, u]}];
-               %Bisects the interval into two disjoint intervals, then searches those for roots
-           end
-           if EXITFLAG <= 0 %Handles errors
-               disp('Warning: fsolve failed; printing EXITFLAG in next line')
-               disp(EXITFLAG)
-           end
-       else
-           %Given the endpoints of the interval both give outputs of the same sign (say, positive),
-           %we then check the minimum between the two to see if any roots exist
-           if f(l) > 0
-               X = fminbnd(f,l,u); 
-               if f(X) < 0
-                   stack = [stack,{[l, X-tol]}];
-                   stack = [stack, {[X+tol, u]}];
-                   %Bisects the interval into two disjoint intervals, then searches those for roots
-               end
-           else
-               g = @(x) -f(x); %MATLAB has no 'fmaxbnd' function so we must
-               %multiply everything by -1, then proceed as above
-               X = fminbnd(g,l,u); 
-               if f(X) > 0
-                   stack = [stack,{[l, X-tol]}];
-                   stack = [stack, {[X+tol, u]}];
-                   %Bisects the interval into two disjoint intervals, then searches those for roots
-               end
-
-           end
-       end
-    end
+        for i = I
+            [X,FVAL,EXITFLAG] = fzero(f,[x(i-1),x(i+1)]); %Uses fzero to find the root 
+            if EXITFLAG <= 0
+                disp('Warning: fsolve failed; printing EXITFLAG in next line') %Error handling
+                disp(EXITFLAG)
+            else
+                solutions = [solutions, X];
+            end
+        end
 end
 
 
@@ -88,14 +62,14 @@ N = 2; % 1 - CHANGE THE NUMBER OF SPECIES
 function r_result = r(M)
     r_result = [
         sech(M-5) - 0.2;
-        sech(M-6) - 0.2];
+        sech(M-6.5) - 0.2];
 end
 
 % 3 - INPUT YOUR EQUATIONS FOR R'(M) AS A VECTOR
 function r_dash_result = rdash(M)
     r_dash_result = [
         -tanh(M-5)*sech(M-5);
-        -tanh(M-6)*sech(M-6)];
+        -tanh(M-6.5)*sech(M-6.5)];
 end
 
 
@@ -107,12 +81,12 @@ end
 
 
 % 4 - CHANGE I AND P (and hash out when not in use)
-I = 8.5;
-P = 3;
+%I = 8.5;
+%P = 3;
 
 % 5 - CHOOSE THE LENGTH OF YOUR PLOTS AND HOW MANY POINTS ON EACH AXIS
 x_min = 0.01;
-x_max = 25;
+x_max = 3;
 y_min = 0.01;
 y_max = 10;
 
@@ -125,18 +99,18 @@ colours = zeros(num_points,num_points,2^N);
 
 y_num=0;
 % 6 - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
-for A11 = linspace(y_min,y_max,num_points)
+for I = linspace(y_min,y_max,num_points)
 
     y_num = y_num + 1;
     x_num = 0;
 
     % 7 - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
-    for I = linspace(x_min,x_max,num_points)
+    for P = linspace(x_min,x_max,num_points)
         x_num = x_num + 1;
         
         %8 - CHANGE YOUR STRUCTURE AND VALUES OF A
         % (and hash out when not in use)
-        %A11 = 0.5
+        A11 = 0.5;
         A12 = 0;
         A21 = 0;
         A22 = 5;

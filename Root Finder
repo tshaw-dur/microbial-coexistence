@@ -1,5 +1,5 @@
 function solutions = FindRoots(f,lower_bound,upper_bound) 
-    num_points = 1e3;    %Adjusts number of subintervals. Default value is 1e3
+    num_points = 1e4;    %Adjusts number of subintervals. Default value is 1e3
     x = linspace(lower_bound,upper_bound,num_points);
     fvals = f(x); %Evaluates function at each subinterval boundary
     sign_check = diff(sign(fvals)) ~= 0; %Checks whether the value of the function at the endpoints of
