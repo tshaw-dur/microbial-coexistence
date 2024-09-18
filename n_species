@@ -90,6 +90,7 @@ x_max = 3;
 y_min = 0.01;
 y_max = 10;
 
+% 6 - CHOOSE THE NUMBER OF POINTS TO PLOT
 num_points = 300;
 
 % This is a 3x3 array containing all the data we need. Each "layer" for a
@@ -98,23 +99,24 @@ num_points = 300;
 colours = zeros(num_points,num_points,2^N);
 
 y_num=0;
-% 6 - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
+% 7 - PLACE THE PARAMETER YOU WANT ON THE Y-AXIS HERE
 for I = linspace(y_min,y_max,num_points)
 
     y_num = y_num + 1;
     x_num = 0;
 
-    % 7 - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
+    % 8 - PLACE THE PARAMETER YOU WANT ON THE X-AXIS HERE 
     for P = linspace(x_min,x_max,num_points)
         x_num = x_num + 1;
         
-        %8 - CHANGE YOUR STRUCTURE AND VALUES OF A
+        % 9 - CHANGE YOUR VALUES OF A
         % (and hash out when not in use)
         A11 = 0.5;
         A12 = 0;
         A21 = 0;
         A22 = 5;
 
+        % 10 - CHANGE THE STRUCTURE OF A
         A = [A11, A12;
         A21, A22];
 
