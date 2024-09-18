@@ -1,0 +1,120 @@
+% This code creates a (p,i) plot for the one species system showing the number and types of each equilibrium
+% for a parameter pair (p,i). The growth rate function r(M) can also be adjusted as needed
+
+% Root finder
+
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    num_points = 5e3;    
+    x = linspace(lower_bound,upper_bound,num_points);
+    fvals = f(x);
+    sign_check = diff(sign(fvals)) ~= 0;
+    I = find(sign_check);
+    solutions = [];
+    for i = I
+        try
+            [X,~,EXITFLAG] = fzero(f,[x(i),x(i+1)]);
+            solutions = [solutions,X];
+        catch
+            disp('Warning: fzero failed; printing EXITFLAG in next line')
+            disp(EXITFLAG)
+        end
+    end
+end
+
+
+% ODE SYSTEM:
+
+% C' = C*(r(M) - C)
+% M' = i - M - p*M*C
+
+
+% Growth rate function (+ derivative)
+
+function r1result = r(M)
+    r1result = tanh(5-M) + 0.9;
+end
+function rdashresult = rderiv(M)
+    rdashresult = -sech(5-M).^2;
+end
+
+
+% Parameters
+
+I = linspace(ymin,ymax,num_points);
+P = linspace(xmin,xmax,num_points);
+
+
+% Plot bounds (take xmin, ymin > 0.01)
+
+ymin = 0.01;        
+ymax = 10;          
+xmin = 0.01;       
+xmax = 2;
+
+
+% Resolution
+
+num_points = 500;  
+
+
+%Preallocating output array
+
+colours = zeros(num_points);
+
+
+parfor j = 1:num_points
+    i = I(j);
+
+    %Extinction equilibrium (always feasible)
+
+    ex_flag = 0;
+    if r(i) < 0  % Stability   
+        ex_flag = 1; 
+    end
+
+    for k = 1:num_points
+        p = P(k);
+
+        % Survival equilibrium
+        surv_flag = 0;
+        G = @(M) p.*M.*r(M) - (i - M); 
+        for root = FindRoots(G,0,i) % Feasibility given by choice of bounds
+            stab = i + p*root^2*rderiv(root); 
+             if stab > 0 % Stability 
+                  surv_flag = surv_flag + 1; 
+             end
+        end
+
+
+        % Colour assignment (see below for values)
+
+        flag_val = 2*surv_flag + ex_flag;
+        colours(j,k) = flag_val;
+
+    end
+end
+
+% Color Map created with RGB Triplets
+
+
+customColorMap = [
+    0, 0, 0;        % 0 = Black - None/Error
+    1, 1, 1;        % 1 = White - Extinction Only
+    1, 0, 0;        % 2 = Red - Survival Only
+    1, 0, 1;        % 3 = Pink - Survival + Extinction
+    0.5, 0, 0;      % 4 = Crimson - Survival Bistability
+    ];
+
+
+% Plot using imagesc
+
+yspace = linspace(ymin,ymax,num_points);
+xspace = linspace(xmin,xmax,num_points);
+figure;
+colormap(customColorMap)
+imagesc(xspace,yspace,colours(:,:))
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title('Two-Parameter Stability Plot','Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
