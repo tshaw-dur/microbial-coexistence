@@ -1,0 +1,174 @@
+% This code creates a (p,i) plot showing only the number of non-extinction equilibria for the three species model. The plot is quite limited
+% in the information it conveys about the model but is useful for identifying interesting values for the community matix A and the growth 
+% rate vector r(M)
+
+% Root finder
+
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    num_points = 5e3;    
+    x = linspace(lower_bound,upper_bound,num_points);
+    fvals = f(x);
+    sign_check = diff(sign(fvals)) ~= 0;
+    I = find(sign_check);
+    solutions = [];
+    for i = I
+        try
+            [X,~,EXITFLAG] = fzero(f,[x(i),x(i+1)]);
+            solutions = [solutions,X];
+        catch
+            disp('Warning: fzero failed; printing EXITFLAG in next line')
+            disp(EXITFLAG)
+        end
+    end
+end
+
+
+% ODE SYSTEM:
+
+% C1' = C1*(r1(M) - A11*C1 - A12*C2 - A13*C3)
+% C2' = C2*(r2(M) - A21*C1 - A22*C2 - A23*C3)
+% C3' = C3*(r3(M) - A31*C1 - A32*C2 - A33*C3)
+% M' = i - M - p*M*(C1 + C2 + C3)
+
+
+% Jacobian
+
+function J = Jacobian(C,M,A,i,p)
+    block_A = - A.*C + diag(r(M) - A*C);    
+    block_B = C.*rderiv(M);
+    block_C = -p*M*ones(1,length(C));
+    block_D = -i/M;
+
+    J = [block_A block_B;
+         block_C block_D];
+end
+
+
+% Reduces r(M)
+
+function subfun = subvect(fun,indices)
+   subfun = fun(indices,:);
+end
+
+
+% Growth rate functions (as vector function)
+
+function r_result = r(M)
+    r_result = [tanh(5-M);
+                tanh(7-M) + 0.79
+                tanh(8-M) - 1];
+end
+
+% Rate of change of growth rate functions (as vector function)
+
+function r_dash_result = rderiv(M)
+    r_dash_result = [-sech(5-M).^2;
+                     -sech(7-M).^2;
+                     -sech(8-M).^2];
+end
+
+
+% Parameters
+
+A11 = 0.23;
+A12 = 0.7;
+A13 = 2;
+A21 = 2;
+A22 = 0.67;
+A23 = 1;
+A31 = 0.1;
+A32 = 0.4;
+A33 = 0.2;
+
+A = [A11, A12, A13;
+     A21, A22, A23;
+     A31, A32, A33];
+
+I = linspace(ymin,ymax,num_points);
+P = linspace(xmin,xmax,num_points);
+
+
+% Plot bounds (take xmin, ymin > 0.01)
+
+ymin = 2;        
+ymax = 5;          
+xmin = 0.1;       
+xmax = 0.5;
+
+
+% Resolution
+
+num_points = 5;  
+
+
+% Preallocating output array
+
+colours = zeros(num_points);
+
+% Index lookup table
+
+index_array = {1 2 3 [1 2] [1 3] [2 3] [1 2 3]};
+
+
+for n = 1:7
+    indices = index_array{n};
+    disp(indices)
+    sub_A = A(indices,indices); % Creates submatrix
+    sub_r = @(M) subvect(r(M),indices); % Creates subvector
+    temp_colours = zeros(num_points); 
+
+    parfor j = 1:num_points
+        i = I(j);
+
+        for k = 1:num_points
+            p = P(k);
+            eq_no = 0;
+
+            G = @(M) i - M.*(1 + p*ones(1,length(indices))*(sub_A \ sub_r(M)));
+            
+            for root = FindRoots(G,0,i) 
+                surviving_species = sub_A \ sub_r(root); 
+                if all (surviving_species >= 0) % Feasibility
+                    all_species = zeros(3,1);
+                    for l = 1:length(indices) % Creates vector of all species values
+                        all_species(indices(l)) = surviving_species(l); 
+                    end
+                    J = Jacobian(all_species,root,A,i,p);
+                    eigenvalues = real(eig(J));
+                    if all (eigenvalues < 0) % Stability
+                        eq_no = eq_no + 1;
+                    end
+                end  
+            end
+
+            temp_colours(j,k) = eq_no;
+        end         
+    end
+    colours = colours + temp_colours;
+end
+
+% Color Map created with RGB Triplets
+
+customColorMap = [
+    0, 0, 0;          % 0 = Black
+    0.5, 0.5, 0.5;    % 1 = Grey
+    0.75, 0.75, 0.75; % 2 = Dark Grey
+    1, 1, 1;          % 3 = White
+    ];
+
+
+% Plot using imagesc
+
+yspace = linspace(ymin,ymax,num_points);
+xspace = linspace(xmin,xmax,num_points);
+
+figure;
+colormap(customColorMap)
+imagesc(xspace,yspace,colours)
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title("Combined Stability Diagram",'Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
+colorbar;
+toc
