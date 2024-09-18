@@ -1,0 +1,305 @@
+% This code plots two figures showing:
+% a) which types of equilibria are stable for a given parameter pair (p,i)
+% b) seperate subplots showing the number of each type of equilibria for a given parameter pair (p,i)
+% Though this code plots (p,i) graphs, other parameters and growth rate functions can be altered as needed 
+
+
+
+% Root finder
+
+function solutions = FindRoots(f,lower_bound,upper_bound) 
+    num_points = 5e3;    
+    x = linspace(lower_bound,upper_bound,num_points);
+    fvals = f(x);
+    sign_check = diff(sign(fvals)) ~= 0;
+    I = find(sign_check);
+    solutions = [];
+    for i = I
+        try
+            [X,~,EXITFLAG] = fzero(f,[x(i),x(i+1)]);
+            solutions = [solutions,X];
+        catch
+            disp('Warning: fzero failed; printing EXITFLAG in next line')
+            disp(EXITFLAG)
+        end
+    end
+end
+
+
+% ODE SYSTEM:
+
+% C1' = C1*(r1(M) - A11*C1 - A12*C2)
+% C2' = C2*(r2(M) - A21*C1 - A22*C2)
+% M' = i - M - p*M*(C1 + C2)
+
+
+% Jacobian
+
+function matrix = Jacobian(C1,C2,M,A11,A12,A21,A22,P)
+    matrix = [r1(M)-2*A11*C1-A12*C2, -A12*C1, C1*r1deriv(M);
+              -A21*C2, r2(M)-A21*C1-2*A22*C2, C2*r2deriv(M);
+              -P*M, -P*M, -1-P*C1-P*C2];
+end
+
+
+% M1 Survival Criterion
+
+function m1 = m1_solve(M,A11,I,P)
+    m1 = P.*M.*r1(M) - A11.*(I-M);
+end
+
+% M2 Survival Criterion
+
+function m2 = m2_solve(M,A22,I,P)
+    m2 = P.*M.*r2(M) - A22.*(I-M);
+end
+
+% Coexistence Survival Criterion
+
+function co = co_solve(M,A11,A12,A21,A22,I,P)
+    co = P.*M.*((A22-A21).*r1(M) + (A11-A12).*r2(M)) - (A11*A22 - A12*A21).*(I-M);
+end
+
+
+
+% Growth rate functions
+
+function r1result = r1(M)
+    r1result = sech(M-5) + 0.9;
+end
+function r2result = r2(M)
+    r2result = tanh(7-M) + 0.79;
+end
+
+% Rate of change of growth rate functions
+
+function r1dashresult = r1deriv(M)
+    r1dashresult = tanh(5-M).*sech(5-M);
+end
+function r2dashresult = r2deriv(M)
+    r2dashresult = -sech(7-M).^2;
+end
+
+
+% Parameters
+
+A11 = 0.23;
+A12 = 0.7;
+A21 = 0.2;
+A22 = 0.67;
+I = linspace(ymin,ymax,num_points);
+P = linspace(xmin,xmax,num_points);
+
+
+% Plot bounds (take xmin, ymin > 0.01)
+
+ymin = 0.01;        
+ymax = 40;          
+xmin = 0.01;       
+xmax = 0.6;
+
+
+% Resolution
+
+num_points = 100;  
+
+
+%Preallocating output arrays
+
+colours = zeros(num_points,num_points,4);
+combined_colours = zeros(num_points);
+
+
+parfor j = 1:num_points
+    i = I(j);
+
+    %Extinction equilibria (Always feasible)
+
+    ex_flag = 0;
+    if r1(i) < 0 && r2(i) < 0  % Stability 
+        ex_flag = 1;  
+    end
+
+    for k = 1:num_points
+        p = P(k);
+  
+        % temp_colour = [Extinction, M1 survival, M2 survival, Coexistence]
+
+        temp_colour = [ex_flag,0,0,0];
+
+        % M1 survival equilibria - Red
+
+        m1_flag = 0;
+        G = @(M) m1_solve(M,A11,i,p);
+        for root = FindRoots(G,0,i) % Feasibility given by choice of bounds
+            stab1 = p*root*r2(root) - A21*(i-root); 
+            stab2 = i*A11 + p*root^2*r1deriv(root);
+            if stab1 < 0 && stab2 > 0 % Stability
+                temp_colour(2) = temp_colour(2) + 1; 
+                m1_flag = 1;
+            end
+        end
+
+        % M2 survival equilibria - Blue
+
+        m2_flag = 0;
+        G = @(M) m2_solve(M,A22,i,p);
+        for root = FindRoots(G,0,i) % Feasibility given by choice of bounds
+            stab1 = p*root*r1(root) - A12*(i-root); 
+            stab2 = i*A22 + p*root^2*r2deriv(root);
+            if stab1 < 0 && stab2 > 0 % Stability
+                temp_colour(3) = temp_colour(3) + 1; 
+                m2_flag = 1;
+            end
+        end
+
+        %Coexistence equilibria - Green 
+
+        co_flag = 0;
+        G = @(M) co_solve(M,A11,A12,A21,A22,i,p);
+        for root = FindRoots(G,0,i)
+            C_1 = ((A22.*r1(root))-(A12.*r2(root)))./(A11*A22-A12*A21);
+            C_2 = ((A11.*r2(root))-(A21.*r1(root)))./(A11*A22-A12*A21);
+            C = [C_1;C_2];
+            if all(C > 0) % Feasibility
+                J_num = Jacobian(C_1,C_2,root,A11,A12,A21,A22,p); 
+                eigenvalues = real(eig(J_num)); 
+                if all(eigenvalues < 0) % Stability
+                    temp_colour(4) = temp_colour(4) + 1; 
+                    co_flag = 1;
+                end
+            end
+        end
+        
+
+        % Colour scheme for individual plots
+
+        for l = 1:4
+            switch temp_colour(l)
+            case 1 % Dark - Single Stable
+                colours(j,k,l) = 2*l - 2; 
+            case 2 % Light - Bistability
+                colours(j,k,l) = 2*l - 1;  
+            otherwise % Black - None/Error
+                colours(j,k,l) = 0; 
+            end 
+        end
+
+        % Colour scheme for combined plots
+
+        flag_val = 8*co_flag + 4*m2_flag + 2*m1_flag + ex_flag; 
+
+        switch flag_val
+            case 1 % White - Extinction only
+                combined_colours(j,k) = 1
+            case 2 % Red - M1 only
+                combined_colours(j,k) = 2
+            case 3 % Light Red - M1 + Extinction
+                combined_colours(j,k) = 3
+            case 4 % Blue - M2 only
+                combined_colours(j,k) = 4
+            case 5 % Light Blue - M2 + Extinction
+                combined_colours(j,k) = 5
+            case 6 % Magenta - M1 + M2
+                combined_colours(j,k) = 8
+            case 7 % Light Magenta - M1 + M2 + Extinction
+                combined_colours(j,k) = 11
+            case 8 % Green - Coexistence
+                combined_colours(j,k) = 6  
+            case 9 % Light Green - Coexistence + Extinction
+                combined_colours(j,k) = 7
+            case 10 % Yellow - Coexistence + M1
+                combined_colours(j,k) = 9
+            case 11 % Light Yellow - Coexistence + M1 + Extinction
+                combined_colours(j,k) = 12
+            case 12 % Cyan - Coexistence + M2
+                combined_colours(j,k) = 10
+            case 13 % Light Cyan - Coexistence + M2 + Extinction
+                combined_colours(j,k) = 13
+            case 14 % Dark Grey - Coexistence + M1 + M2
+                combined_colours(j,k) = 14
+            case 15 % Grey - All
+                combined_colours(j,k) = 15
+            otherwise % Black - None/Error
+                combined_colours(j,k) = 0
+        end
+    end
+end
+
+
+% Color Map created with RGB Triplets
+
+customColorMap = [
+    0, 0, 0;          % 0 = Black
+    1, 1, 1;          % 1 = White
+    1, 0, 0;          % 2 = Red
+    1, 0.5, 0.5;      % 3 = Light Red
+    0, 0, 1;          % 4 = Blue
+    0.5, 0.5, 1;      % 5 = Light Blue
+    0, 0.95, 0;       % 6 = Green
+    0.4, 1, 0.4;      % 7 = Light Green
+    1, 0, 1;          % 8 = Magenta
+    1, 1, 0;          % 9 = Yellow
+    0, 1, 1;          % 10 = Cyan
+    1, 0.5, 1;        % 11 = Light Magenta
+    1, 1, 0.5;        % 12 = Light Yellow
+    0.5, 1, 1;        % 13 = Light Cyan
+    0.5, 0.5, 0.5;    % 14 = Dark Grey
+    0.75, 0.75, 0.75; % 15 = Grey
+    ];
+
+
+% Plot using imagesc
+
+yspace = linspace(ymin,ymax,num_points);
+xspace = linspace(xmin,xmax,num_points);
+
+
+% Individual plots
+
+figure;
+subplot(2,2,1)
+colormap(customColorMap)
+imagesc(xspace,yspace,colours(:,:,1))
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title('Extinction stability','Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
+subplot(2,2,2)
+colormap(customColorMap)
+imagesc(xspace,yspace,colours(:,:,2))
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title('$C_{1}$ survival stability','Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
+subplot(2,2,3)
+colormap(customColorMap)
+imagesc(xspace,yspace,colours(:,:,3))
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title('$C_{2}$ survival stability','Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
+subplot(2,2,4)
+colormap(customColorMap)
+imagesc(xspace,yspace,colours(:,:,4))
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title("Coexistence stability",'Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
+
+
+% Combined plot
+
+figure;
+colormap(customColorMap)
+imagesc(xspace,yspace,combined_colours)
+set(gca, 'CLim', [0 length(customColorMap) - 1]);
+axis xy
+title("Combined Stability Diagram",'Interpreter','latex', 'FontSize', 12)
+xlabel('$p$','Interpreter','latex', 'FontSize', 12)
+ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
+colorbar;
