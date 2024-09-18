@@ -20,7 +20,7 @@ The other files are:
   This code was an old, slower draft of _Nondimensionalised_fast_.
 
 
-**Instructions for _Nondimensionalised_fast_**
+**Instructions for _Nondimensionalised_fast_:**
 1) Alter your equations for r_1 and r_2
 2) Alter your equations for r_1' and r_2' (you will have to calculate these by hand)
 3) Choose your parameters, and hide the two you will be plotting on the graph
@@ -28,7 +28,7 @@ The other files are:
 5) Choose the number of points you want to plot (e.g. 100x100)
 6) Place the two parameters you want to plot into the for loops
 
-**Instructions for _n_species_**
+**Instructions for _n_species_:**
 1) Change the number of species
 2) Input your equatios for r(M) as a vector
 3) Input your equations for r'(M) as a vector (again, you must calculate these by hand)
