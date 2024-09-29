@@ -3,8 +3,6 @@
 % b) seperate subplots showing the number of each type of equilibria for a given parameter pair (p,i)
 % Though this code plots (p,i) graphs, other parameters and growth rate functions can be altered as needed 
 
-
-
 % Root finder
 
 function solutions = FindRoots(f,lower_bound,upper_bound) 
@@ -62,46 +60,47 @@ end
 
 
 
-% Growth rate functions
+% r1 and r2 functions
 
 function r1result = r1(M)
-    r1result = sech(M-5) + 0.9;
+    r1result = sech(4-M)-0.2;
+    %r1result = sech(M-5) + 0.9;
 end
 function r2result = r2(M)
-    r2result = tanh(7-M) + 0.79;
+    r2result = sech(8-M)-0.2;
 end
 
-% Rate of change of growth rate functions
+% r1' and r2'
 
 function r1dashresult = r1deriv(M)
-    r1dashresult = tanh(5-M).*sech(5-M);
+    r1dashresult = tanh(4-M).*sech(4-M);
+    %r1dashresult = tanh(5-M).*sech(5-M);
 end
 function r2dashresult = r2deriv(M)
-    r2dashresult = -sech(7-M).^2;
+    r2dashresult = tanh(8-M).*sech(8-M);
 end
-
-
-% Parameters
-
-A11 = 0.23;
-A12 = 0.7;
-A21 = 0.2;
-A22 = 0.67;
-I = linspace(ymin,ymax,num_points);
-P = linspace(xmin,xmax,num_points);
-
 
 % Plot bounds (take xmin, ymin > 0.01)
 
 ymin = 0.01;        
-ymax = 40;          
+ymax = 12;          
 xmin = 0.01;       
-xmax = 0.6;
+xmax = 2;
 
 
 % Resolution
 
-num_points = 100;  
+num_points = 250; 
+
+
+% Parameters
+
+A11 = 1;
+A12 = 0;
+A21 = 0;
+A22 = 1;
+I = linspace(ymin,ymax,num_points);
+P = linspace(xmin,xmax,num_points);
 
 
 %Preallocating output arrays
@@ -181,7 +180,7 @@ parfor j = 1:num_points
             case 2 % Light - Bistability
                 colours(j,k,l) = 2*l - 1;  
             otherwise % Black - None/Error
-                colours(j,k,l) = 0; 
+                colours(j,k,l) = 1; 
             end 
         end
 
@@ -191,7 +190,7 @@ parfor j = 1:num_points
 
         switch flag_val
             case 1 % White - Extinction only
-                combined_colours(j,k) = 1
+                combined_colours(j,k) = 0
             case 2 % Red - M1 only
                 combined_colours(j,k) = 2
             case 3 % Light Red - M1 + Extinction
@@ -221,7 +220,7 @@ parfor j = 1:num_points
             case 15 % Grey - All
                 combined_colours(j,k) = 15
             otherwise % Black - None/Error
-                combined_colours(j,k) = 0
+                combined_colours(j,k) = 1
         end
     end
 end
@@ -230,8 +229,8 @@ end
 % Color Map created with RGB Triplets
 
 customColorMap = [
-    0, 0, 0;          % 0 = Black
-    1, 1, 1;          % 1 = White
+    1, 1, 1;          % 0 = White
+    0, 0, 0;          % 1 = Black  
     1, 0, 0;          % 2 = Red
     1, 0.5, 0.5;      % 3 = Light Red
     0, 0, 1;          % 4 = Blue
@@ -303,3 +302,4 @@ title("Combined Stability Diagram",'Interpreter','latex', 'FontSize', 12)
 xlabel('$p$','Interpreter','latex', 'FontSize', 12)
 ylabel('$i$','Interpreter','latex', 'FontSize', 12, 'Rotation', 0)
 colorbar;
+
