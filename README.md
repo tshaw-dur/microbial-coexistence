@@ -3,7 +3,7 @@ This is a repository for the code for the '**Microbial Coexistence with Resource
 **Files:**\
 The 6 key files are:
 1) _bifurcation_plots_\
-   This is a live script where users can input their own growth functions and parameter values to get a bifurcation plot of metal influx i against competition strength gamma \
+   This is a live script where users can input their own growth functions and parameter values to get a bifurcation plot of metal influx i against competition strength gamma 
 2) _one_species_\
    This code creates a 2-parameter bifurcation diagram for p and i, showing the number and types of each equilibria, for the 1-species model.
 3) _two_species_ \
